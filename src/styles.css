@@ -1,1 +1,77 @@
 @import 'tailwindcss';
+
+@theme {
+  /* sacamos la paleta default para que nadie use bg-gray-800 y similares */
+  --color-*: initial;
+
+  --font-sans: 'Onest', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-app: #121210;
+  --color-surface-1: #1a1916;
+  --color-surface-2: #23211d;
+  --color-surface-3: #2a2722;
+  --color-line: #2e2b26;
+  --color-line-strong: #3a362f;
+
+  --color-fg: #ede9e0;
+  --color-fg-2: #b8b2a6;
+  --color-muted: #9c968a;
+  --color-faint: #8a847a;
+
+  --color-accent: #e8a33d;
+  --color-accent-hover: #f2bd6b;
+  --color-accent-soft: #2e2614;
+  --color-on-accent: #1a1408;
+
+  --color-success: #8fc6a3;
+  --color-success-soft: #1a2a20;
+
+  --color-danger: #e07a5f;
+  --color-danger-fg: #e8957f;
+  --color-danger-soft: #2e1d18;
+  --color-danger-line: #5c2e22;
+
+  --color-info: #8fb0d9;
+  --color-info-soft: #1a2230;
+  --color-info-line: #34465e;
+
+  --color-idle: #5a554c;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-container: 18px;
+
+  --text-display: 64px;
+  --text-display--line-height: 64px;
+  --text-display--letter-spacing: -2.4px;
+  --text-display--font-weight: 600;
+  --text-h1: 30px;
+  --text-h1--line-height: 36px;
+  --text-h1--letter-spacing: -0.8px;
+  --text-h1--font-weight: 600;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--letter-spacing: -0.3px;
+  --text-h2--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 21px;
+  --text-small: 12px;
+  --text-small--line-height: 18px;
+  --text-label: 12px;
+  --text-label--line-height: 18px;
+  --text-label--font-weight: 500;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-app text-fg font-sans text-body;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
