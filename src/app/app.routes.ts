@@ -55,6 +55,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: PrivateLayout,
+    data: { admin: true },
     children: [
       {
         path: '',

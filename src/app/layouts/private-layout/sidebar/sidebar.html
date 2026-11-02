@@ -1,28 +1,57 @@
-@if (abierto()) {
-  <div class="fixed inset-0 z-30 bg-black/40 md:hidden" (click)="cerrar.emit()"></div>
-}
-
-<aside
-  class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-gray-900 text-gray-300 transition-transform md:static md:translate-x-0"
-  [class.-translate-x-full]="!abierto()"
+<nav
+  [attr.aria-label]="admin() ? 'Administración' : 'Panel'"
+  class="flex h-full flex-col gap-6 px-3.5 py-6"
 >
-  <div class="px-6 py-5 text-lg font-bold text-white">TurnosApp</div>
+  <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 px-2.5">
+    <svg width="26" height="26" viewBox="0 0 26 26" class="shrink-0 text-accent" aria-hidden="true">
+      <rect
+        x="1"
+        y="1"
+        width="24"
+        height="24"
+        rx="7"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      />
+      <path d="M8 13h10M13 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    <span class="text-lg font-bold tracking-tight">TurnosApp</span>
+    @if (admin()) {
+      <span
+        class="inline-flex w-fit self-start rounded-full bg-info-soft px-2.5 py-0.5 text-label text-info"
+      >
+        Admin
+      </span>
+    }
+  </div>
 
-  <nav class="flex-1 px-3">
-    <ul class="space-y-1">
-      @for (link of links; track link.ruta) {
-        <li>
-          <a
-            [routerLink]="link.ruta"
-            routerLinkActive="bg-gray-800 text-white"
-            [routerLinkActiveOptions]="{ exact: link.ruta === '/panel' }"
-            class="block rounded-md px-3 py-2 text-sm hover:bg-gray-800 hover:text-white"
-            (click)="cerrar.emit()"
-          >
-            {{ link.texto }}
-          </a>
-        </li>
+  @if (!admin()) {
+    <button
+      type="button"
+      class="flex h-10 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
+    >
+      + Nuevo turno
+    </button>
+  }
+
+  @for (grupo of grupos(); track $index) {
+    <div class="flex flex-col gap-0.5">
+      @if (grupo.titulo) {
+        <span class="px-2.5 pb-1.5 text-label text-faint">{{ grupo.titulo }}</span>
       }
-    </ul>
-  </nav>
-</aside>
+      @for (link of grupo.links; track link.ruta) {
+        <a
+          [routerLink]="link.ruta"
+          routerLinkActive="bg-surface-2 text-fg"
+          [routerLinkActiveOptions]="{ exact: true }"
+          #rla="routerLinkActive"
+          [class.text-fg-2]="!rla.isActive"
+          class="rounded-lg px-2.5 py-2 hover:text-fg"
+        >
+          {{ link.texto }}
+        </a>
+      }
+    </div>
+  }
+</nav>
