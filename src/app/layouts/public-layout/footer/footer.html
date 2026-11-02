@@ -1,5 +1,94 @@
-<footer class="border-t border-gray-200 bg-gray-50">
-  <div class="mx-auto max-w-6xl px-4 py-6 text-center text-sm text-gray-500">
-    © {{ anio }} TurnosApp
+<footer class="border-t border-line">
+  <div
+    class="mx-auto grid max-w-360 gap-8 px-5 py-8 lg:grid-cols-[1.6fr_3fr] lg:gap-16 lg:px-20 lg:py-14"
+  >
+    <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-2.5">
+        <a
+          routerLink="/"
+          class="flex w-fit items-center gap-2.5 text-[17px] font-bold tracking-tight"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 26 26"
+            class="shrink-0 text-accent"
+            aria-hidden="true"
+          >
+            <rect
+              x="1"
+              y="1"
+              width="24"
+              height="24"
+              rx="7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path
+              d="M8 13h10M13 8v5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+          TurnosApp
+        </a>
+        <p class="max-w-80 text-small text-muted">
+          Turnos online con seña para negocios que atienden con hora.
+        </p>
+      </div>
+
+      <div
+        class="flex w-full max-w-90 flex-col gap-2.5 rounded-control border border-line-strong bg-surface-1 p-3 sm:flex-row sm:items-center sm:justify-between sm:py-1.5 sm:pr-1.5"
+      >
+        <span class="font-mono text-small text-muted">
+          turnosapp.com/<span class="text-fg">tu-negocio</span>
+        </span>
+        <a
+          routerLink="/ingresar"
+          class="flex h-9 items-center justify-center rounded-lg bg-accent px-4 text-small font-semibold text-on-accent hover:bg-accent-hover"
+        >
+          Comenzar
+        </a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3">
+      @for (columna of columnas; track columna.titulo) {
+        <div class="flex flex-col gap-2.5">
+          <span class="text-body font-medium text-faint">{{ columna.titulo }}</span>
+          @for (link of columna.links; track link.texto) {
+            @if (link.externo) {
+              <a
+                [href]="link.ruta"
+                target="_blank"
+                rel="noopener"
+                class="w-fit text-small text-fg-2 hover:text-accent"
+              >
+                {{ link.texto }}
+              </a>
+            } @else {
+              <a
+                [routerLink]="link.ruta"
+                [fragment]="link.ancla"
+                class="w-fit text-small text-fg-2 hover:text-accent"
+              >
+                {{ link.texto }}
+              </a>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="border-t border-line">
+    <div
+      class="mx-auto flex max-w-360 flex-col gap-1 px-5 py-4 text-small text-muted sm:flex-row sm:justify-between lg:px-20"
+    >
+      <span>© {{ anio }} TurnosApp</span>
+      <span>Grupo 8 · UTN</span>
+    </div>
   </div>
 </footer>

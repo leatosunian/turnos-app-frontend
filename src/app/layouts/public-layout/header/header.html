@@ -1,21 +1,36 @@
-<header class="border-b border-gray-200 bg-white">
-  <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-    <a routerLink="/" class="text-lg font-bold text-indigo-600">TurnosApp</a>
+<header class="border-b border-line">
+  <nav
+    aria-label="Principal"
+    class="mx-auto flex h-15 max-w-360 items-center gap-5 px-5 lg:h-16 lg:px-20"
+  >
+    <a routerLink="/" class="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
+      <svg width="22" height="22" viewBox="0 0 26 26" class="shrink-0 text-accent" aria-hidden="true">
+        <rect
+          x="1"
+          y="1"
+          width="24"
+          height="24"
+          rx="7"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <path d="M8 13h10M13 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      TurnosApp
+    </a>
 
-    <ul class="flex items-center gap-4 text-sm">
-      <li>
-        <a routerLink="/login" routerLinkActive="text-indigo-600" class="hover:text-indigo-600">
-          Ingresar
-        </a>
-      </li>
-      <li>
-        <a
-          routerLink="/registro"
-          class="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700"
-        >
-          Registrá tu negocio
-        </a>
-      </li>
-    </ul>
+    <div class="ml-auto flex items-center gap-5 text-fg-2">
+      <a routerLink="/mis-turnos" routerLinkActive="text-fg" class="hover:text-accent">
+        Mis turnos
+      </a>
+      <a routerLink="/ingresar" routerLinkActive="text-fg" class="hover:text-accent">Ingresar</a>
+      <a
+        routerLink="/ingresar"
+        class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover sm:flex"
+      >
+        Crear mi negocio
+      </a>
+    </div>
   </nav>
 </header>
