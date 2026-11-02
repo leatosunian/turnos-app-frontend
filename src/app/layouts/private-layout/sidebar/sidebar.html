@@ -1,0 +1,57 @@
+<nav
+  [attr.aria-label]="admin() ? 'Administración' : 'Panel'"
+  class="flex h-full flex-col gap-6 px-3.5 py-6"
+>
+  <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 px-2.5">
+    <svg width="26" height="26" viewBox="0 0 26 26" class="shrink-0 text-accent" aria-hidden="true">
+      <rect
+        x="1"
+        y="1"
+        width="24"
+        height="24"
+        rx="7"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      />
+      <path d="M8 13h10M13 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    <span class="text-lg font-bold tracking-tight">TurnosApp</span>
+    @if (admin()) {
+      <span
+        class="inline-flex w-fit self-start rounded-full bg-info-soft px-2.5 py-0.5 text-label text-info"
+      >
+        Admin
+      </span>
+    }
+  </div>
+
+  @if (!admin()) {
+    <button
+      type="button"
+      class="flex h-10 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
+    >
+      + Nuevo turno
+    </button>
+  }
+
+  @for (grupo of grupos(); track $index) {
+    <div class="flex flex-col gap-0.5">
+      @if (grupo.titulo) {
+        <span class="px-2.5 pb-1.5 text-label text-faint">{{ grupo.titulo }}</span>
+      }
+      @for (link of grupo.links; track link.ruta) {
+        <a
+          [routerLink]="link.ruta"
+          routerLinkActive="bg-surface-2 text-fg"
+          [routerLinkActiveOptions]="{ exact: true }"
+          #rla="routerLinkActive"
+          [class.text-fg-2]="!rla.isActive"
+          class="rounded-lg px-2.5 py-2 hover:text-fg"
+        >
+          {{ link.texto }}
+        </a>
+      }
+    </div>
+  }
+</nav>

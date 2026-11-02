@@ -1,0 +1,34 @@
+<div class="flex min-h-dvh bg-app">
+  <aside class="hidden w-54 shrink-0 lg:block">
+    <app-sidebar [admin]="admin" class="sticky top-0 block h-dvh" />
+  </aside>
+
+  <main
+    class="min-w-0 flex-1 px-4.5 pt-4 pb-24 lg:m-2.5 lg:ml-0 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:px-8 lg:py-7"
+  >
+    <router-outlet />
+  </main>
+
+  @if (!admin) {
+    <button
+      type="button"
+      aria-label="Nuevo turno"
+      class="fixed right-4.5 bottom-23 z-20 flex size-14 items-center justify-center rounded-2xl bg-accent text-on-accent hover:bg-accent-hover lg:hidden"
+    >
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </button>
+  }
+
+  <app-barra-inferior [admin]="admin" class="lg:hidden" />
+</div>
