@@ -1,18 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../environments/environment';
 import { errorInterceptor } from './error-interceptor';
 import { ApiError } from '../models/api-error';
+import { AuthService } from '../services/auth-service';
 
 describe('errorInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
+  let cerrarSesion: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    cerrarSesion = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
+        { provide: AuthService, useValue: { cerrarSesion } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -66,5 +71,33 @@ describe('errorInterceptor', () => {
 
     expect(errores[0].status).toBe(404);
     expect(errores[0].message.length).toBeGreaterThan(0);
+  });
+
+  it('con un 401 cierra la sesión', () => {
+    const url = `${environment.apiUrl}/users/me/appointments`;
+    http.get(url).subscribe({ error: () => {} });
+    httpMock
+      .expectOne(url)
+      .flush(
+        { status: 401, message: 'No autorizado' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    expect(cerrarSesion).toHaveBeenCalled();
+  });
+
+  it('un 401 del login no cierra la sesión ni redirige', () => {
+    const url = `${environment.apiUrl}/auth/login`;
+    const errores: ApiError[] = [];
+    http.post(url, {}).subscribe({ error: (e: ApiError) => errores.push(e) });
+    httpMock
+      .expectOne(url)
+      .flush(
+        { status: 401, message: 'Credenciales inválidas' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    expect(cerrarSesion).not.toHaveBeenCalled();
+    expect(errores[0].message).toBe('Credenciales inválidas');
   });
 });
