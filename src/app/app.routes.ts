@@ -2,12 +2,14 @@ import { Routes } from '@angular/router';
 import { PublicLayout } from './layouts/public-layout/public-layout';
 import { PrivateLayout } from './layouts/private-layout/private-layout';
 import { HomePage } from './pages/public/home-page/home-page';
+import { rolGuard } from './core/guards/rol-guard';
 
 // panel y admin van antes que el layout público porque ':slug' matchea cualquier ruta
 export const routes: Routes = [
   {
     path: 'panel',
     component: PrivateLayout,
+    canActivate: [rolGuard(['OWNER', 'EMPLOYEE'])],
     children: [
       {
         path: '',
@@ -55,6 +57,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: PrivateLayout,
+    canActivate: [rolGuard(['ADMIN'])],
     data: { admin: true },
     children: [
       {
@@ -101,6 +104,7 @@ export const routes: Routes = [
       },
       {
         path: 'mis-turnos',
+        canActivate: [rolGuard(['CLIENT'])],
         loadComponent: () =>
           import('./pages/public/mis-turnos-page/mis-turnos-page').then((m) => m.MisTurnosPage),
       },
