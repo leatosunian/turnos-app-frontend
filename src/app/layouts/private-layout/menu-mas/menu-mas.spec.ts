@@ -4,6 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse } from '../../../core/models/negocio';
 import { RoleName } from '../../../core/models/usuario';
+import { AppointmentService } from '../../../core/services/appointment-service';
 import { AuthService } from '../../../core/services/auth-service';
 import { NegocioService } from '../../../core/services/negocio-service';
 import { MenuMas } from './menu-mas';
@@ -14,15 +15,18 @@ describe('MenuMas', () => {
   let fixture: ComponentFixture<MenuMas>;
   let miNegocio: ReturnType<typeof vi.fn<() => Observable<BusinessResponse>>>;
   let cerrarSesion: ReturnType<typeof vi.fn>;
+  let contar: ReturnType<typeof vi.fn<() => Observable<number>>>;
 
-  async function crear(roles: RoleName[], respuesta: Observable<BusinessResponse>) {
+  async function crear(roles: RoleName[], respuesta: Observable<BusinessResponse>, sinSena = 0) {
     miNegocio = vi.fn(() => respuesta);
     cerrarSesion = vi.fn();
+    contar = vi.fn(() => of(sinSena));
     await TestBed.configureTestingModule({
       imports: [MenuMas],
       providers: [
         provideRouter([]),
         { provide: NegocioService, useValue: { miNegocio } },
+        { provide: AppointmentService, useValue: { contar } },
         {
           provide: AuthService,
           useValue: {
@@ -61,6 +65,19 @@ describe('MenuMas', () => {
 
     const abrir = el().querySelector<HTMLAnchorElement>('a[target="_blank"]');
     expect(abrir?.href).toBe(`${location.origin}/estudio-malbec`);
+  });
+
+  it('la fila Turnos muestra cuántos esperan seña', async () => {
+    await crear(['OWNER'], of(NEGOCIO), 4);
+
+    expect(contar).toHaveBeenCalledWith('n-1', 'AWAITING_PAYMENT');
+    expect(el().querySelector('nav a')?.textContent).toContain('4 sin seña');
+  });
+
+  it('sin turnos esperando seña no muestra la pastilla', async () => {
+    await crear(['OWNER'], of(NEGOCIO));
+
+    expect(el().textContent).not.toContain('sin seña');
   });
 
   it('copia el link al portapapeles', async () => {

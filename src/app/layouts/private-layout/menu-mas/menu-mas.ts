@@ -15,6 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse } from '../../../core/models/negocio';
+import { AppointmentService } from '../../../core/services/appointment-service';
 import { AuthService } from '../../../core/services/auth-service';
 import { NegocioService } from '../../../core/services/negocio-service';
 
@@ -57,6 +58,7 @@ const MENSAJES_COPIA: Record<EstadoCopia, string> = {
 export class MenuMas implements OnInit, AfterViewInit {
   private readonly auth = inject(AuthService);
   private readonly negocios = inject(NegocioService);
+  private readonly turnos = inject(AppointmentService);
   private readonly origen = inject(DOCUMENT).location.origin;
   private readonly destroyRef = inject(DestroyRef);
   private readonly titulo = viewChild.required<ElementRef<HTMLElement>>('titulo');
@@ -95,6 +97,9 @@ export class MenuMas implements OnInit, AfterViewInit {
   /** El link sin el protocolo, como se muestra en pantalla. */
   protected readonly linkVisible = computed(() => this.link().replace(/^https?:\/\//, ''));
 
+  /** Turnos esperando seña, para la pastilla de la fila Turnos. 0 si no hay o si falla. */
+  protected readonly sinSena = signal(0);
+
   ngOnInit(): void {
     if (this.esDueno) {
       this.cargarNegocio();
@@ -112,7 +117,10 @@ export class MenuMas implements OnInit, AfterViewInit {
       .miNegocio()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (negocio) => this.estado.set({ tipo: 'listo', negocio }),
+        next: (negocio) => {
+          this.estado.set({ tipo: 'listo', negocio });
+          this.cargarSinSena(negocio.id);
+        },
         error: (error: ApiError) =>
           this.estado.set(
             error.status === 404
@@ -120,6 +128,14 @@ export class MenuMas implements OnInit, AfterViewInit {
               : { tipo: 'error', mensaje: error.message },
           ),
       });
+  }
+
+  private cargarSinSena(businessId: string): void {
+    this.turnos
+      .contar(businessId, 'AWAITING_PAYMENT')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      // Es un dato de apoyo: si falla, la pastilla no se muestra y listo.
+      .subscribe({ next: (total) => this.sinSena.set(total), error: () => this.sinSena.set(0) });
   }
 
   protected async copiarLink(): Promise<void> {
