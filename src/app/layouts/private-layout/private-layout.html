@@ -4,12 +4,17 @@
   </aside>
 
   <main
+    [class.max-lg:hidden]="masAbierto()"
     class="min-w-0 flex-1 px-4.5 pt-4 pb-24 lg:m-2.5 lg:ml-0 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:px-8 lg:py-7"
   >
     <router-outlet />
   </main>
 
-  @if (!admin) {
+  @if (masAbierto()) {
+    <app-menu-mas (elegir)="cerrarMas()" class="block min-w-0 flex-1 px-4.5 pt-4 pb-24 lg:hidden" />
+  }
+
+  @if (!admin && !masAbierto()) {
     <button
       type="button"
       aria-label="Nuevo turno"
@@ -30,5 +35,11 @@
     </button>
   }
 
-  <app-barra-inferior [admin]="admin" class="lg:hidden" />
+  <app-barra-inferior
+    [admin]="admin"
+    [masAbierto]="masAbierto()"
+    (alternarMas)="alternarMas()"
+    (navegar)="cerrarMas()"
+    class="lg:hidden"
+  />
 </div>
