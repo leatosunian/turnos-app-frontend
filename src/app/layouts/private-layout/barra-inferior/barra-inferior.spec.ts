@@ -29,4 +29,19 @@ describe('BarraInferior', () => {
     );
     expect(textos).toEqual(['Resumen', 'Usuarios', 'Negocios', 'Rubros']);
   });
+
+  it('el botón Más avisa que se tocó y refleja si el menú está abierto', async () => {
+    let veces = 0;
+    component.alternarMas.subscribe(() => veces++);
+    const mas = (fixture.nativeElement as HTMLElement).querySelector('button')!;
+
+    mas.click();
+    expect(veces).toBe(1);
+    expect(mas.getAttribute('aria-expanded')).toBe('false');
+
+    fixture.componentRef.setInput('masAbierto', true);
+    await fixture.whenStable();
+    expect(mas.getAttribute('aria-expanded')).toBe('true');
+    expect(mas.getAttribute('aria-controls')).toBe('menu-mas');
+  });
 });

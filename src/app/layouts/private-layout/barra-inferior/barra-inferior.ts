@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 type Icono = 'hoy' | 'agenda' | 'metricas' | 'usuarios' | 'negocios' | 'rubros';
@@ -24,6 +24,12 @@ const LINKS_ADMIN: { ruta: string; texto: string; icono: Icono }[] = [
 })
 export class BarraInferior {
   readonly admin = input(false);
+  readonly masAbierto = input(false);
+
+  /** Toca "Más": abre o cierra el menú. */
+  readonly alternarMas = output<void>();
+  /** Toca cualquier link de la barra: el menú se cierra aunque ya esté en esa ruta. */
+  readonly navegar = output<void>();
 
   protected readonly links = computed(() => (this.admin() ? LINKS_ADMIN : LINKS_PANEL));
 }

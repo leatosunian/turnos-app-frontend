@@ -8,8 +8,10 @@
       routerLinkActive
       [routerLinkActiveOptions]="{ exact: true }"
       #rla="routerLinkActive"
-      [class.text-muted]="!rla.isActive"
-      [class.text-accent]="rla.isActive && !admin()"
+      (click)="navegar.emit()"
+      [attr.aria-current]="rla.isActive && !masAbierto() ? 'page' : null"
+      [class.text-muted]="!rla.isActive || masAbierto()"
+      [class.text-accent]="rla.isActive && !masAbierto() && !admin()"
       [class.text-info]="rla.isActive && admin()"
       class="flex flex-col items-center gap-1"
     >
@@ -56,8 +58,15 @@
   }
 
   @if (!admin()) {
-    <!-- el menú que abre "Más" es de TA-24 -->
-    <button type="button" class="flex flex-col items-center gap-1 text-muted">
+    <button
+      type="button"
+      (click)="alternarMas.emit()"
+      [attr.aria-controls]="masAbierto() ? 'menu-mas' : null"
+      [attr.aria-expanded]="masAbierto()"
+      [class.text-muted]="!masAbierto()"
+      [class.text-accent]="masAbierto()"
+      class="flex flex-col items-center gap-1"
+    >
       <svg
         width="20"
         height="20"
