@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Observable, Subscription, catchError, forkJoin, map, of } from 'rxjs';
@@ -7,6 +16,7 @@ import { ApiError } from '../../../core/models/api-error';
 import { AppointmentResponse, AppointmentStatus } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { NegocioService } from '../../../core/services/negocio-service';
+import { MenuMasEstado } from '../../../layouts/private-layout/menu-mas/menu-mas-estado';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
 import { Boton } from '../../../shared/components/boton/boton';
 import { EstadoTurno } from '../../../shared/components/estado-turno/estado-turno';
@@ -75,6 +85,8 @@ export class TurnosPage implements OnInit {
   private readonly turnosApi = inject(AppointmentService);
   private readonly negocios = inject(NegocioService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly menuMas = inject(MenuMasEstado);
+  private readonly tabla = viewChild<ElementRef<HTMLElement>>('tabla');
   private pedido?: Subscription;
   private businessId = '';
 
@@ -142,6 +154,17 @@ export class TurnosPage implements OnInit {
   /** Reemplaza la lista por esa página (paginación de escritorio). */
   protected irAPagina(numero: number): void {
     this.cargar(numero, false);
+  }
+
+  /** Paginación de la tabla: cambia de página y vuelve al principio de la tabla. */
+  protected cambiarPagina(numero: number): void {
+    this.irAPagina(numero);
+    this.tabla()?.nativeElement.scrollIntoView?.({ block: 'start' });
+  }
+
+  /** Link "‹ Más" del celular: vuelve al menú de donde se entró. */
+  protected volverAMas(): void {
+    this.menuMas.abrir();
   }
 
   /** Suma la página siguiente a la lista (celular). */

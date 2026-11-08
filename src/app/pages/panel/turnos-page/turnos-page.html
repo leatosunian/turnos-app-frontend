@@ -1,6 +1,27 @@
 <div class="flex flex-col gap-5">
   <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
     <div class="flex flex-col gap-1">
+      <!-- en el celular se entra desde "Más", así que se vuelve ahí -->
+      <button
+        type="button"
+        (click)="volverAMas()"
+        class="mb-0.5 flex w-fit items-center gap-1 text-[13px] text-muted hover:text-fg lg:hidden"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        Más
+      </button>
       @if (estadoNegocio() === 'listo') {
         <span class="text-[13px] text-muted">
           <span class="font-mono tabular-nums">{{ contador(null) ?? total() }}</span> turnos
@@ -142,7 +163,8 @@
       } @else {
         <!-- Escritorio: tabla paginada -->
         <div
-          class="hidden flex-col rounded-card border border-line bg-app px-1 pt-1 lg:flex"
+          #tabla
+          class="hidden scroll-mt-4 flex-col rounded-card border border-line bg-app px-1 pt-1 lg:flex"
           [class.opacity-60]="cargando() === 'pagina'"
           [attr.aria-busy]="cargando() === 'pagina'"
         >
@@ -207,7 +229,7 @@
               <nav aria-label="Páginas" class="flex gap-1.5">
                 <button
                   type="button"
-                  (click)="irAPagina(primeraPagina() - 1)"
+                  (click)="cambiarPagina(primeraPagina() - 1)"
                   [disabled]="primeraPagina() === 0 || cargando()"
                   aria-label="Página anterior"
                   class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"
@@ -222,7 +244,7 @@
                   } @else {
                     <button
                       type="button"
-                      (click)="irAPagina(numero)"
+                      (click)="cambiarPagina(numero)"
                       [disabled]="cargando()"
                       [attr.aria-current]="numero === primeraPagina() ? 'page' : null"
                       [class.bg-line]="numero === primeraPagina()"
@@ -235,7 +257,7 @@
                 }
                 <button
                   type="button"
-                  (click)="irAPagina(primeraPagina() + 1)"
+                  (click)="cambiarPagina(primeraPagina() + 1)"
                   [disabled]="primeraPagina() + 1 >= totalPaginas() || cargando()"
                   aria-label="Página siguiente"
                   class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"

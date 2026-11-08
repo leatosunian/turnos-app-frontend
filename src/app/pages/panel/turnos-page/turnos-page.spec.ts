@@ -10,6 +10,7 @@ import { Pagina } from '../../../core/models/pagina';
 import { AppointmentResponse, AppointmentStatus } from '../../../core/models/turno';
 import { AppointmentService, FiltroTurnos } from '../../../core/services/appointment-service';
 import { NegocioService } from '../../../core/services/negocio-service';
+import { MenuMasEstado } from '../../../layouts/private-layout/menu-mas/menu-mas-estado';
 import { TurnosPage, agruparPorDia, numerosDePagina } from './turnos-page';
 
 registerLocaleData(localeEsAr);
@@ -190,6 +191,15 @@ describe('TurnosPage', () => {
     boton('Libres').click();
     await fixture.whenStable();
     expect(el().querySelector('[role="alert"]')?.textContent).toContain('Sin conexión');
+  });
+
+  it('el link "Más" del celular abre el menú Más', async () => {
+    await crear();
+    const menu = TestBed.inject(MenuMasEstado);
+
+    boton('Más').click();
+
+    expect(menu.abierto()).toBe(true);
   });
 
   it('si el dueño no tiene negocio, avisa en vez de pedir turnos', async () => {
