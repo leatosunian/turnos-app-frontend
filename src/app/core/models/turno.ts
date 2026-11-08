@@ -1,4 +1,5 @@
-export type AppointmentStatus = 'UNBOOKED' | 'AWAITING_PAYMENT' | 'BOOKED' | 'CANCELLED' | 'SUSPENDED';
+export type AppointmentStatus =
+  'UNBOOKED' | 'AWAITING_PAYMENT' | 'BOOKED' | 'CANCELLED' | 'SUSPENDED';
 
 // Ojo: CANCELED va con una sola L, a diferencia de AppointmentStatus.
 export type DepositStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'FORFEITED' | 'CANCELED';
@@ -26,4 +27,15 @@ export interface AppointmentResponse {
   employeeName: string | null;
   createdAt: string;
   deposit: DepositResponse | null;
+}
+
+/**
+ * Solo se suspenden turnos reservados que todavía no terminaron (Confirmado o En curso).
+ * El back deja suspender cualquier BOOKED, pero en uno terminado le devolvería la seña al cliente.
+ */
+export function sePuedeSuspender(
+  turno: Pick<AppointmentResponse, 'status' | 'endDatetime'>,
+  ahora: Date = new Date(),
+): boolean {
+  return turno.status === 'BOOKED' && ahora.getTime() < new Date(turno.endDatetime).getTime();
 }
