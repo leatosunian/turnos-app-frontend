@@ -7,6 +7,10 @@ import { ApiError } from '../../../core/models/api-error';
 import { AppointmentResponse, AppointmentStatus } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { NegocioService } from '../../../core/services/negocio-service';
+import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
+import { Boton } from '../../../shared/components/boton/boton';
+import { EstadoTurno } from '../../../shared/components/estado-turno/estado-turno';
+import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { FechaPipe } from '../../../shared/pipes/fecha-pipe';
 import { HoraPipe } from '../../../shared/pipes/hora-pipe';
 import { MontoPipe } from '../../../shared/pipes/monto-pipe';
@@ -28,16 +32,6 @@ const FILTROS: Filtro[] = [
   { status: 'SUSPENDED', texto: 'Suspendidos' },
 ];
 
-// TODO TA-9: reemplazar por el componente compartido estado-turno, que además resuelve
-// "En curso" y "Terminado" para los BOOKED.
-const TEXTO_ESTADO: Record<AppointmentStatus, string> = {
-  UNBOOKED: 'Libre',
-  AWAITING_PAYMENT: 'Esperando seña',
-  BOOKED: 'Confirmado',
-  CANCELLED: 'Cancelado',
-  SUSPENDED: 'Suspendido',
-};
-
 type EstadoNegocio = 'cargando' | 'listo' | 'sin-negocio' | 'error';
 type TipoAccion = 'suspender' | 'eliminar';
 
@@ -58,7 +52,17 @@ interface GrupoDia {
 type ClaveFiltro = AppointmentStatus | 'todos';
 
 @Component({
-  imports: [NgTemplateOutlet, RouterLink, FechaPipe, HoraPipe, MontoPipe],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    AvisoVacio,
+    Boton,
+    EstadoTurno,
+    Pastilla,
+    FechaPipe,
+    HoraPipe,
+    MontoPipe,
+  ],
   selector: 'app-turnos-page',
   styleUrl: './turnos-page.css',
   templateUrl: './turnos-page.html',
@@ -75,7 +79,6 @@ export class TurnosPage implements OnInit {
   private businessId = '';
 
   protected readonly filtros = FILTROS;
-  protected readonly textoEstado = TEXTO_ESTADO;
 
   protected readonly estadoNegocio = signal<EstadoNegocio>('cargando');
   protected readonly errorNegocio = signal('');
@@ -150,8 +153,12 @@ export class TurnosPage implements OnInit {
     this.irAPagina(this.primeraPagina());
   }
 
+  /**
+   * Solo reservados que todavía no terminaron (Confirmado o En curso). El back deja suspender
+   * cualquier BOOKED, pero en uno ya terminado le devolvería la seña al cliente.
+   */
   protected puedeSuspender(turno: AppointmentResponse): boolean {
-    return turno.status === 'BOOKED';
+    return turno.status === 'BOOKED' && Date.now() < new Date(turno.endDatetime).getTime();
   }
 
   protected puedeEliminar(turno: AppointmentResponse): boolean {

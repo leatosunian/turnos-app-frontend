@@ -17,7 +17,8 @@ registerLocaleData(localeEsAr);
 function turno(
   id: string,
   status: AppointmentStatus,
-  inicio = '2026-10-28T09:30:00',
+  // a futuro, para que los BOOKED estén confirmados y no terminados
+  inicio = '2099-10-28T09:30:00',
 ): AppointmentResponse {
   return {
     id,
@@ -130,6 +131,14 @@ describe('TurnosPage', () => {
     menus[1].click();
     await fixture.whenStable();
     expect(el().querySelector('[role="menu"]')?.textContent?.trim()).toBe('Eliminar turno libre');
+  });
+
+  it('un reservado que ya terminó no se puede suspender', async () => {
+    api.listar.mockReturnValue(of(pagina([turno('1', 'BOOKED', '2020-01-10T09:30:00')])));
+    await crear();
+
+    expect(el().querySelector('tbody')?.textContent).toContain('Terminado');
+    expect(el().querySelector('tbody [aria-haspopup="menu"]')).toBeNull();
   });
 
   it('suspender pide confirmación, llama al back y recarga', async () => {
