@@ -15,7 +15,7 @@ interface ColumnaFooter {
 export class Footer {
   protected readonly anio = new Date().getFullYear();
 
-  // las anclas apuntan a las secciones de la landing (TA-4)
+  // las anclas apuntan a las secciones de la landing (TA-14)
   protected readonly columnas: ColumnaFooter[] = [
     {
       titulo: 'Producto',
