@@ -46,6 +46,13 @@ export class AppointmentService {
     return this.listar(businessId, { status, size: 1 }).pipe(map((pagina) => pagina.total));
   }
 
+  /** Todos los turnos de hoy (libres incluidos), ordenados por hora. Solo OWNER y ADMIN. */
+  deHoy(businessId: string): Observable<AppointmentResponse[]> {
+    return this.http.get<AppointmentResponse[]>(
+      `${this.url}/businesses/${businessId}/appointments/today`,
+    );
+  }
+
   /** Solo turnos BOOKED. Le devuelve la seña al cliente. */
   suspender(id: string): Observable<AppointmentResponse> {
     return this.http.put<AppointmentResponse>(`${this.url}/appointments/${id}/suspend`, null);
