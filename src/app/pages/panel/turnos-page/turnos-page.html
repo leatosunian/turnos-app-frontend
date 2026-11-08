@@ -1,1 +1,445 @@
-<p>turnos-page works!</p>
+<div class="flex flex-col gap-5">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div class="flex flex-col gap-1">
+      <!-- en el celular se entra desde "Más", así que se vuelve ahí -->
+      <button
+        type="button"
+        (click)="volverAMas()"
+        class="mb-0.5 flex w-fit items-center gap-1 text-[13px] text-muted hover:text-fg lg:hidden"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        Más
+      </button>
+      @if (estadoNegocio() === 'listo') {
+        <span class="text-[13px] text-muted">
+          <span class="font-mono tabular-nums">{{ contador(null) ?? total() }}</span> turnos
+        </span>
+      }
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Turnos</h1>
+    </div>
+
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+      <label
+        class="flex h-11 items-center gap-2 rounded-control border border-line bg-surface-1 px-3 text-faint lg:h-10 lg:w-72 lg:bg-app"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          aria-hidden="true"
+          class="shrink-0"
+        >
+          <circle cx="11" cy="11" r="6" />
+          <path d="M20 20l-4.5-4.5" />
+        </svg>
+        <input
+          type="search"
+          disabled
+          placeholder="Buscar cliente o email"
+          aria-label="Buscar cliente o email (todavía no disponible)"
+          class="min-w-0 flex-1 bg-transparent placeholder:text-faint disabled:cursor-not-allowed"
+        />
+        <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </label>
+      <button
+        type="button"
+        disabled
+        aria-label="Rango de fechas (todavía no disponible)"
+        class="hidden h-10 items-center gap-2 rounded-control border border-line-strong bg-surface-2 px-3 text-muted disabled:cursor-not-allowed lg:flex"
+      >
+        Rango de fechas
+        <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </button>
+    </div>
+  </header>
+
+  @switch (estadoNegocio()) {
+    @case ('cargando') {
+      <div aria-busy="true" aria-label="Cargando turnos" class="flex flex-col gap-2">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="h-14 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos vas a ver acá los turnos."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col gap-1 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <span class="font-semibold text-danger-fg">No se pudieron cargar los turnos</span>
+        <span class="text-small text-fg-2">{{ errorNegocio() }}</span>
+      </div>
+    }
+    @case ('listo') {
+      <div
+        role="group"
+        aria-label="Filtrar por estado"
+        class="-mx-4.5 flex gap-1.5 overflow-x-auto px-4.5 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:gap-2 lg:px-0"
+      >
+        @for (f of filtros; track f.texto) {
+          <button
+            type="button"
+            (click)="elegirFiltro(f.status)"
+            [attr.aria-pressed]="filtro() === f.status"
+            [class.border-accent]="filtro() === f.status"
+            [class.bg-accent-soft]="filtro() === f.status"
+            [class.text-accent]="filtro() === f.status"
+            [class.border-line-strong]="filtro() !== f.status"
+            [class.text-fg-2]="filtro() !== f.status"
+            class="flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] lg:text-body"
+          >
+            {{ f.texto }}
+            @if (contador(f.status) !== undefined) {
+              <span
+                class="font-mono text-[11px] tabular-nums"
+                [class.text-faint]="filtro() !== f.status"
+              >
+                {{ contador(f.status) }}
+              </span>
+            }
+          </button>
+        }
+      </div>
+
+      @if (error()) {
+        <div
+          role="alert"
+          class="flex flex-col gap-2 rounded-card border border-danger-line bg-danger-soft p-4"
+        >
+          <span class="font-semibold text-danger-fg">No se pudieron cargar los turnos</span>
+          <span class="text-small text-fg-2">{{ error() }}</span>
+          <button appBoton variante="secundario" type="button" (click)="reintentar()" class="w-fit">
+            Reintentar
+          </button>
+        </div>
+      } @else if (cargando() === 'pagina' && !turnos().length) {
+        <div aria-busy="true" aria-label="Cargando turnos" class="flex flex-col gap-2">
+          @for (i of [1, 2, 3, 4, 5]; track i) {
+            <div class="h-14 animate-pulse rounded-card bg-surface-2"></div>
+          }
+        </div>
+      } @else if (!turnos().length) {
+        @if (filtro()) {
+          <app-aviso-vacio
+            titulo="No hay turnos con este estado"
+            detalle="Probá con otro filtro o mirá todos los turnos."
+          >
+            <button appBoton variante="secundario" type="button" (click)="elegirFiltro(null)">
+              Ver todos
+            </button>
+          </app-aviso-vacio>
+        } @else {
+          <app-aviso-vacio
+            titulo="Todavía no hay turnos"
+            detalle="Los turnos aparecen cuando armás tus horarios."
+          >
+            <a appBoton variante="secundario" routerLink="/panel/horarios">Ir a Horarios</a>
+          </app-aviso-vacio>
+        }
+      } @else {
+        <!-- Escritorio: tabla paginada -->
+        <div
+          #tabla
+          class="hidden scroll-mt-4 flex-col rounded-card border border-line bg-app px-1 pt-1 lg:flex"
+          [class.opacity-60]="cargando() === 'pagina'"
+          [attr.aria-busy]="cargando() === 'pagina'"
+        >
+          <table class="w-full table-fixed border-collapse text-left">
+            <caption class="sr-only">
+              Turnos del negocio
+            </caption>
+            <thead>
+              <tr class="text-label text-faint">
+                <th scope="col" class="w-24 px-3 py-2.5 font-medium">Fecha</th>
+                <th scope="col" class="w-16 px-3 py-2.5 font-medium">Hora</th>
+                <th scope="col" class="px-3 py-2.5 font-medium">Cliente</th>
+                <th scope="col" class="px-3 py-2.5 font-medium">Servicio</th>
+                <th scope="col" class="w-28 px-3 py-2.5 font-medium">Profesional</th>
+                <th scope="col" class="w-24 px-3 py-2.5 text-right font-medium">Seña</th>
+                <th scope="col" class="w-40 px-3 py-2.5 font-medium">Estado</th>
+                <th scope="col" class="w-11 px-1 py-2.5"><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (turno of turnos(); track turno.id) {
+                <tr class="border-t border-line" [class.text-muted]="turno.status === 'UNBOOKED'">
+                  <td class="px-3 py-2.75 font-mono text-small text-muted">
+                    {{ turno.startDatetime | fecha: 'corta' }}
+                  </td>
+                  <td class="px-3 py-2.75 font-mono tabular-nums">
+                    {{ turno.startDatetime | hora }}
+                  </td>
+                  <td class="truncate px-3 py-2.75" [class.font-semibold]="turno.clientName">
+                    {{ turno.clientName ?? '—' }}
+                  </td>
+                  <td class="truncate px-3 py-2.75 text-fg-2">{{ turno.serviceName }}</td>
+                  <td class="truncate px-3 py-2.75 text-fg-2">
+                    {{ turno.employeeName ?? 'Sin asignar' }}
+                  </td>
+                  <td class="px-3 py-2.75 text-right font-mono text-[13px] tabular-nums">
+                    {{ turno.deposit ? (turno.deposit.amount | monto) : '—' }}
+                  </td>
+                  <td class="px-3 py-2.75">
+                    <app-estado-turno [turno]="turno" />
+                  </td>
+                  <td class="relative px-1 py-1.5">
+                    @if (tieneAcciones(turno)) {
+                      <ng-container
+                        [ngTemplateOutlet]="menuAcciones"
+                        [ngTemplateOutletContext]="{ $implicit: turno }"
+                      />
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div
+            class="flex items-center justify-between border-t border-line p-3 text-[13px] text-muted"
+          >
+            <span class="font-mono text-small tabular-nums"
+              >{{ desde() }}–{{ hasta() }} de {{ total() }}</span
+            >
+            @if (totalPaginas() > 1) {
+              <nav aria-label="Páginas" class="flex gap-1.5">
+                <button
+                  type="button"
+                  (click)="cambiarPagina(primeraPagina() - 1)"
+                  [disabled]="primeraPagina() === 0 || cargando()"
+                  aria-label="Página anterior"
+                  class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"
+                >
+                  ‹
+                </button>
+                @for (numero of paginas(); track $index) {
+                  @if (numero === null) {
+                    <span aria-hidden="true" class="flex size-7.5 items-center justify-center"
+                      >…</span
+                    >
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="cambiarPagina(numero)"
+                      [disabled]="cargando()"
+                      [attr.aria-current]="numero === primeraPagina() ? 'page' : null"
+                      [class.bg-line]="numero === primeraPagina()"
+                      [class.text-fg]="numero === primeraPagina()"
+                      class="flex h-7.5 min-w-7.5 items-center justify-center rounded-lg px-1.5 font-mono text-small hover:bg-surface-2"
+                    >
+                      {{ numero + 1 }}
+                    </button>
+                  }
+                }
+                <button
+                  type="button"
+                  (click)="cambiarPagina(primeraPagina() + 1)"
+                  [disabled]="primeraPagina() + 1 >= totalPaginas() || cargando()"
+                  aria-label="Página siguiente"
+                  class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"
+                >
+                  ›
+                </button>
+              </nav>
+            }
+          </div>
+        </div>
+
+        <!-- Celular: lista agrupada por día, con "Cargar más" -->
+        <div class="flex flex-col gap-4 lg:hidden">
+          @for (grupo of grupos(); track grupo.clave) {
+            <section class="flex flex-col gap-1.5">
+              <h2 class="text-[12.5px] font-medium text-faint">
+                @if (grupo.relativo) {
+                  {{ grupo.relativo }} ·
+                }
+                {{ grupo.fecha | fecha: 'corta' }}
+              </h2>
+              @for (turno of grupo.turnos; track turno.id) {
+                <div
+                  class="relative grid grid-cols-[46px_1fr_auto_auto] items-center gap-2.5 rounded-xl bg-surface-1 py-2.5 pr-1 pl-3"
+                >
+                  <span class="font-mono tabular-nums">{{ turno.startDatetime | hora }}</span>
+                  <div class="flex min-w-0 flex-col">
+                    <span
+                      class="truncate font-semibold"
+                      [class.line-through]="turno.status === 'CANCELLED'"
+                      [class.text-muted]="turno.status === 'CANCELLED' || !turno.clientName"
+                    >
+                      {{ turno.clientName ?? 'Sin reservar' }}
+                    </span>
+                    <span class="truncate text-small text-muted">
+                      {{ turno.serviceName }} · {{ turno.employeeName ?? 'Sin asignar' }}
+                    </span>
+                  </div>
+                  <!-- en el celular el chip va más chico, como en la maqueta, para no tapar el nombre -->
+                  <app-estado-turno [turno]="turno" class="gap-1.5! px-2.5! py-1! text-[11px]!" />
+                  <div class="relative size-9.5">
+                    @if (tieneAcciones(turno)) {
+                      <ng-container
+                        [ngTemplateOutlet]="menuAcciones"
+                        [ngTemplateOutletContext]="{ $implicit: turno }"
+                      />
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (hayMas()) {
+            <button
+              type="button"
+              (click)="cargarMas()"
+              [disabled]="cargando() === 'mas'"
+              class="h-10 rounded-control font-mono text-small text-muted hover:text-fg disabled:opacity-60"
+            >
+              {{ cargando() === 'mas' ? 'Cargando…' : 'Cargar más' }} · {{ turnos().length }} de
+              {{ total() }}
+            </button>
+          } @else {
+            <p class="text-center font-mono text-small text-muted">
+              {{ turnos().length }} de {{ total() }}
+            </p>
+          }
+        </div>
+      }
+    }
+  }
+</div>
+
+<ng-template #menuAcciones let-turno>
+  <button
+    type="button"
+    (click)="alternarMenu(turno, $event)"
+    [attr.aria-expanded]="menuAbierto() === turno.id"
+    aria-haspopup="menu"
+    [attr.aria-label]="'Acciones del turno de las ' + (turno.startDatetime | hora)"
+    class="flex size-9.5 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-fg"
+  >
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="5" cy="12" r="1.2" />
+      <circle cx="12" cy="12" r="1.2" />
+      <circle cx="19" cy="12" r="1.2" />
+    </svg>
+  </button>
+  @if (menuAbierto() === turno.id) {
+    <div
+      role="menu"
+      (click)="$event.stopPropagation()"
+      class="absolute top-full right-0 z-10 mt-1 flex w-44 flex-col rounded-control border border-line-strong bg-surface-2 p-1"
+    >
+      @if (puedeSuspender(turno)) {
+        <button
+          type="button"
+          role="menuitem"
+          (click)="pedirConfirmacion('suspender', turno)"
+          class="rounded-lg px-3 py-2 text-left text-danger-fg hover:bg-danger-soft"
+        >
+          Suspender turno
+        </button>
+      }
+      @if (puedeEliminar(turno)) {
+        <button
+          type="button"
+          role="menuitem"
+          (click)="pedirConfirmacion('eliminar', turno)"
+          class="rounded-lg px-3 py-2 text-left text-danger-fg hover:bg-danger-soft"
+        >
+          Eliminar turno libre
+        </button>
+      }
+    </div>
+  }
+</ng-template>
+
+@if (accion(); as a) {
+  <div class="fixed inset-0 z-30 flex items-end justify-center bg-app/70 p-2.5 sm:items-center">
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirmacion-titulo"
+      aria-describedby="confirmacion-detalle"
+      class="flex w-full max-w-sm flex-col gap-4 rounded-container border border-line-strong bg-surface-1 p-5"
+    >
+      <div class="flex flex-col gap-1.5">
+        <h2 id="confirmacion-titulo" class="text-h2">
+          {{ a.tipo === 'suspender' ? '¿Suspender este turno?' : '¿Eliminar este turno libre?' }}
+        </h2>
+        <p id="confirmacion-detalle" class="text-fg-2">
+          @if (a.tipo === 'suspender') {
+            {{ a.turno.clientName }}, {{ a.turno.startDatetime | fecha: 'corta' }} a las
+            <span class="font-mono">{{ a.turno.startDatetime | hora }}</span
+            >. Se le devuelve la seña{{
+              a.turno.deposit ? ' de ' + (a.turno.deposit.amount | monto) : ''
+            }}.
+          } @else {
+            {{ a.turno.serviceName }}, {{ a.turno.startDatetime | fecha: 'corta' }} a las
+            <span class="font-mono">{{ a.turno.startDatetime | hora }}</span
+            >. El horario deja de ofrecerse para reservar.
+          }
+        </p>
+      </div>
+      @if (errorAccion()) {
+        <p role="alert" class="text-small text-danger-fg">{{ errorAccion() }}</p>
+      }
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button
+          appBoton
+          variante="secundario"
+          type="button"
+          (click)="cancelarAccion()"
+          [disabled]="procesando()"
+        >
+          Volver
+        </button>
+        <button
+          appBoton
+          variante="destructivo"
+          type="button"
+          (click)="confirmarAccion()"
+          [disabled]="procesando()"
+        >
+          @if (procesando()) {
+            {{ a.tipo === 'suspender' ? 'Suspendiendo…' : 'Eliminando…' }}
+          } @else {
+            {{ a.tipo === 'suspender' ? 'Suspender' : 'Eliminar' }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

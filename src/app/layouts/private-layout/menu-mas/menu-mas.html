@@ -34,6 +34,13 @@
             <span class="text-[15px] font-semibold">{{ acceso.titulo }}</span>
             <span class="text-small text-muted">{{ acceso.detalle }}</span>
           </span>
+          @if (acceso.ruta === '/panel/turnos' && sinSena()) {
+            <span
+              class="shrink-0 rounded-full bg-danger-soft px-2 py-0.75 text-[11px] text-danger-fg"
+            >
+              {{ sinSena() }} sin seña
+            </span>
+          }
           <svg
             width="16"
             height="16"
