@@ -62,6 +62,13 @@ describe('AppointmentService', () => {
     expect(total).toBe(11);
   });
 
+  it('pagarSena usa el endpoint de pago', () => {
+    service.pagarSena('t-1').subscribe();
+    const req = httpMock.expectOne(`${URL}/appointments/t-1/pay-deposit`);
+    expect(req.request.method).toBe('POST');
+    req.flush(TURNO);
+  });
+
   it('suspender y eliminar usan su endpoint', () => {
     service.suspender('t-1').subscribe();
     const suspender = httpMock.expectOne(`${URL}/appointments/t-1/suspend`);
