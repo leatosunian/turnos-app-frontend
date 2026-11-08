@@ -4,6 +4,17 @@ import { PrivateLayout } from './layouts/private-layout/private-layout';
 import { HomePage } from './pages/public/home-page/home-page';
 import { rolGuard } from './core/guards/rol-guard';
 
+// catálogo interno para el equipo: existe con ng serve, no en el build de producción
+const soloDesarrollo: Routes = ngDevMode
+  ? [
+      {
+        path: 'componentes',
+        loadComponent: () =>
+          import('./pages/dev/componentes-page/componentes-page').then((m) => m.ComponentesPage),
+      },
+    ]
+  : [];
+
 // panel y admin van antes que el layout público porque ':slug' matchea cualquier ruta
 export const routes: Routes = [
   {
@@ -108,6 +119,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/public/mis-turnos-page/mis-turnos-page').then((m) => m.MisTurnosPage),
       },
+      ...soloDesarrollo,
       {
         path: ':slug',
         loadComponent: () =>
