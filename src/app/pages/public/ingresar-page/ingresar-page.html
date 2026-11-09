@@ -1,1 +1,234 @@
-<p>ingresar-page works!</p>
+<div class="mx-auto grid max-w-360 lg:grid-cols-2">
+  <section class="flex justify-center px-5 py-8 lg:px-20 lg:py-16">
+    <div class="flex w-full max-w-105 flex-col gap-6 lg:my-auto lg:gap-7">
+      <!-- switch formulario login/signup -->
+      <div
+        role="tablist"
+        aria-label="Acceso"
+        class="flex rounded-card border border-line bg-surface-1 p-1"
+      >
+        <button
+          #tabIngresar
+          id="tab-ingresar"
+          role="tab"
+          type="button"
+          aria-controls="panel-acceso"
+          [attr.aria-selected]="modo() === 'ingresar'"
+          [tabIndex]="modo() === 'ingresar' ? 0 : -1"
+          (click)="cambiarModo('ingresar')"
+          (keydown.arrowLeft)="moverConFlechas(tabCrear)"
+          (keydown.arrowRight)="moverConFlechas(tabCrear)"
+          class="h-10 flex-1 rounded-control"
+          [class]="
+            modo() === 'ingresar' ? 'bg-line font-medium text-fg' : 'text-muted hover:text-fg'
+          "
+        >
+          Ingresar
+        </button>
+        <button
+          #tabCrear
+          id="tab-crear"
+          role="tab"
+          type="button"
+          aria-controls="panel-acceso"
+          [attr.aria-selected]="modo() === 'crear'"
+          [tabIndex]="modo() === 'crear' ? 0 : -1"
+          (click)="cambiarModo('crear')"
+          (keydown.arrowLeft)="moverConFlechas(tabIngresar)"
+          (keydown.arrowRight)="moverConFlechas(tabIngresar)"
+          class="h-10 flex-1 rounded-control"
+          [class]="modo() === 'crear' ? 'bg-line font-medium text-fg' : 'text-muted hover:text-fg'"
+        >
+          Crear cuenta
+        </button>
+      </div>
+
+      @if (modo() === 'ingresar') {
+        <form
+          id="panel-acceso"
+          role="tabpanel"
+          aria-labelledby="tab-ingresar"
+          novalidate
+          [formGroup]="ingreso"
+          (ngSubmit)="enviar()"
+          class="flex flex-col gap-6 lg:gap-7"
+        >
+          <div class="flex flex-col gap-2">
+            <h1 class="text-[28px] leading-tight font-semibold tracking-tight lg:text-4xl">
+              Hola de nuevo
+            </h1>
+            <p class="text-muted">Ingresá con tu email y tu contraseña.</p>
+          </div>
+
+          <div class="flex flex-col gap-3.5">
+            <app-campo etiqueta="Email" [error]="error(ingreso.controls.email, mensajes.email)">
+              <input type="email" formControlName="email" autocomplete="email" class="h-12!" />
+            </app-campo>
+            <app-campo
+              etiqueta="Contraseña"
+              [error]="error(ingreso.controls.password, mensajes.claveIngreso)"
+            >
+              <input
+                type="password"
+                formControlName="password"
+                autocomplete="current-password"
+                class="h-12!"
+              />
+            </app-campo>
+          </div>
+
+          @if (errorServidor()) {
+            <p
+              role="alert"
+              class="rounded-control border border-danger-line bg-danger-soft px-3 py-2.5 text-danger-fg"
+            >
+              {{ errorServidor() }}
+            </p>
+          }
+
+          <button appBoton grande type="submit" class="w-full text-[15px]" [disabled]="enviando()">
+            {{ textoBoton() }}
+          </button>
+
+          <div class="flex flex-col gap-2 text-[13px] text-muted">
+            <p class="flex flex-wrap items-center gap-1.5">
+              ¿Olvidaste tu contraseña?
+              <button type="button" disabled class="cursor-not-allowed text-faint">
+                Recuperarla
+              </button>
+              <app-pastilla tono="cielo">Futuro</app-pastilla>
+            </p>
+            <p>
+              ¿No tenés cuenta?
+              <button
+                type="button"
+                (click)="cambiarModo('crear')"
+                class="text-accent hover:text-accent-hover"
+              >
+                Creá una
+              </button>
+            </p>
+          </div>
+        </form>
+      } @else {
+        <form
+          id="panel-acceso"
+          role="tabpanel"
+          aria-labelledby="tab-crear"
+          novalidate
+          [formGroup]="registro"
+          (ngSubmit)="enviar()"
+          class="flex flex-col gap-6 lg:gap-7"
+        >
+          <div class="flex flex-col gap-2">
+            <h1 class="text-[28px] leading-tight font-semibold tracking-tight lg:text-4xl">
+              Empezá en dos minutos
+            </h1>
+            <p id="pregunta-tipo" class="text-muted">¿Para qué vas a usar TurnosApp?</p>
+          </div>
+
+          <div role="radiogroup" aria-labelledby="pregunta-tipo" class="grid grid-cols-2 gap-2.5">
+            @for (opcion of tiposCuenta; track opcion.valor) {
+              <label
+                class="flex cursor-pointer flex-col gap-1 rounded-card border border-line-strong p-3 has-checked:border-accent has-checked:bg-accent-soft has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent lg:p-4"
+              >
+                <input
+                  type="radio"
+                  name="tipo"
+                  class="sr-only"
+                  [value]="opcion.valor"
+                  [checked]="tipo() === opcion.valor"
+                  (change)="tipo.set(opcion.valor)"
+                />
+                <span class="font-semibold" [class.text-accent]="tipo() === opcion.valor">
+                  {{ opcion.titulo }}
+                </span>
+                <span class="text-small text-muted">{{ opcion.detalle }}</span>
+              </label>
+            }
+          </div>
+
+          <div class="flex flex-col gap-3.5">
+            <app-campo
+              etiqueta="Nombre y apellido"
+              [error]="error(registro.controls.nombre, mensajes.nombre)"
+            >
+              <input formControlName="nombre" autocomplete="name" class="h-12!" />
+            </app-campo>
+            <app-campo etiqueta="Email" [error]="error(registro.controls.email, mensajes.email)">
+              <input type="email" formControlName="email" autocomplete="email" class="h-12!" />
+            </app-campo>
+            @let errorClave = error(registro.controls.password, mensajes.claveNueva);
+            <div class="flex flex-col gap-1.5">
+              <app-campo etiqueta="Contraseña" [error]="errorClave">
+                <input
+                  type="password"
+                  formControlName="password"
+                  autocomplete="new-password"
+                  class="h-12!"
+                />
+              </app-campo>
+              @if (!errorClave) {
+                <p class="text-small text-faint">
+                  Mínimo 8 caracteres, con una mayúscula, una minúscula y un número.
+                </p>
+              }
+            </div>
+          </div>
+
+          @if (errorServidor()) {
+            <p
+              role="alert"
+              class="rounded-control border border-danger-line bg-danger-soft px-3 py-2.5 text-danger-fg"
+            >
+              {{ errorServidor() }}
+            </p>
+          }
+
+          <button appBoton grande type="submit" class="w-full text-[15px]" [disabled]="enviando()">
+            {{ textoBoton() }}
+          </button>
+
+          <p class="text-[13px] text-muted">
+            ¿Ya tenés cuenta?
+            <button
+              type="button"
+              (click)="cambiarModo('ingresar')"
+              class="text-accent hover:text-accent-hover"
+            >
+              Ingresá
+            </button>
+          </p>
+        </form>
+      }
+    </div>
+  </section>
+
+  <aside
+    class="m-3 hidden flex-col justify-between gap-10 rounded-container border border-line bg-surface-1 p-14 lg:flex"
+  >
+    <app-pastilla>
+      {{ modo() === 'crear' ? 'Después de crear tu cuenta' : 'Cómo funciona' }}
+    </app-pastilla>
+    <ol class="flex flex-col">
+      @for (paso of pasos(); track paso.titulo; let i = $index, ultimo = $last) {
+        <li class="grid grid-cols-[56px_1fr] border-line py-5.5" [class.border-b]="!ultimo">
+          <span class="font-mono" [class]="i === 0 ? 'text-accent' : 'text-muted'"
+            >0{{ i + 1 }}</span
+          >
+          <div class="flex flex-col gap-1">
+            <span class="text-[22px] leading-tight font-semibold tracking-tight">{{
+              paso.titulo
+            }}</span>
+            <span class="text-muted">{{ paso.detalle }}</span>
+          </div>
+        </li>
+      }
+    </ol>
+    @if (modo() === 'ingresar' || tipo() === 'negocio') {
+      <span class="font-mono text-[15px]"
+        >turnosapp.com/<span class="text-accent">tu-negocio</span></span
+      >
+    }
+  </aside>
+</div>
