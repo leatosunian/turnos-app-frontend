@@ -27,6 +27,7 @@
       <a routerLink="/ingresar" routerLinkActive="text-fg" class="hover:text-accent">Ingresar</a>
       <a
         routerLink="/ingresar"
+        [queryParams]="{ modo: 'crear' }"
         class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover sm:flex"
       >
         Crear mi negocio
