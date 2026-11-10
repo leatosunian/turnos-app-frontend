@@ -1,3 +1,6 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsAr from '@angular/common/locales/es-AR';
+import { LOCALE_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -5,7 +8,10 @@ import { provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { errorInterceptor } from '../../../core/interceptors/error-interceptor';
 import { BusinessResponse, BusinessTypeResponse } from '../../../core/models/negocio';
+import { ServResponse } from '../../../core/models/servicio';
 import { DIAS_A_GENERAR, MiNegocioPage } from './mi-negocio-page';
+
+registerLocaleData(localeEsAr);
 
 const API = environment.apiUrl;
 
@@ -46,6 +52,7 @@ describe('MiNegocioPage', () => {
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: LOCALE_ID, useValue: 'es-AR' },
       ],
     }).compileComponents();
 
@@ -57,11 +64,15 @@ describe('MiNegocioPage', () => {
 
   afterEach(() => httpMock.verify());
 
-  async function cargar(respuesta: BusinessResponse | null): Promise<void> {
+  async function cargar(
+    respuesta: BusinessResponse | null,
+    servicios: ServResponse[] = [],
+  ): Promise<void> {
     httpMock.expectOne(`${API}/business-types`).flush(RUBROS);
     const mine = httpMock.expectOne(`${API}/businesses/mine`);
     if (respuesta) {
       mine.flush(respuesta);
+      httpMock.expectOne(`${API}/businesses/${respuesta.id}/services`).flush(servicios);
     } else {
       mine.flush(
         { status: 404, message: 'No encontrado' },
@@ -279,5 +290,48 @@ describe('MiNegocioPage', () => {
     boton('Reintentar')!.click();
     await cargar(negocio());
     expect(input('nombre').value).toBe('Estudio Malbec');
+  });
+
+  describe('vista previa', () => {
+    function servicio(id: string, name: string, price: number): ServResponse {
+      return { id, name, price, durationMinutes: 30, depositPorcentage: 30, businessId: 'n-1' };
+    }
+
+    function vistaPrevia(): string {
+      return el.querySelector('aside[aria-label="Vista previa"]')?.textContent ?? '';
+    }
+
+    it('muestra los primeros servicios con su precio', async () => {
+      await cargar(negocio(), [
+        servicio('s-1', 'Corte clásico', 9000),
+        servicio('s-2', 'Corte + barba', 12500),
+        servicio('s-3', 'Barba', 5500),
+      ]);
+
+      expect(vistaPrevia()).toContain('Corte clásico');
+      expect(vistaPrevia()).toContain('$9.000');
+      expect(vistaPrevia()).toContain('$12.500');
+      expect(vistaPrevia()).not.toContain('Barba');
+      expect(vistaPrevia()).toContain('+ 1 más');
+    });
+
+    it('sin servicios invita a cargarlos', async () => {
+      await cargar(negocio(), []);
+
+      const link = el.querySelector('aside a[href="/panel/servicios"]');
+      expect(link?.textContent).toContain('Cargar servicios');
+    });
+
+    it('si fallan los servicios, la pantalla se muestra igual', async () => {
+      httpMock.expectOne(`${API}/business-types`).flush(RUBROS);
+      httpMock.expectOne(`${API}/businesses/mine`).flush(negocio());
+      httpMock
+        .expectOne(`${API}/businesses/n-1/services`)
+        .flush({ status: 500, message: 'Error' }, { status: 500, statusText: 'Error' });
+      await refrescar();
+
+      expect(input('nombre').value).toBe('Estudio Malbec');
+      expect(vistaPrevia()).not.toContain('Cargar servicios');
+    });
   });
 });

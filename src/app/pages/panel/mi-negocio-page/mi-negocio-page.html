@@ -291,9 +291,33 @@
               </div>
             </div>
             @if (vistaPrevia().descripcion) {
-              <p class="text-[13px] leading-[1.45] break-words text-fg-2">
+              <p class="text-[13px] leading-[1.45] wrap-break-word text-fg-2">
                 {{ vistaPrevia().descripcion }}
               </p>
+            }
+            @if (servicios(); as lista) {
+              @if (lista.length) {
+                <ul class="flex flex-col gap-1.5">
+                  @for (servicio of serviciosVisibles(); track servicio.id) {
+                    <li
+                      class="flex justify-between gap-3 rounded-lg bg-surface-2 px-2.5 py-2 text-[13px]"
+                    >
+                      <span class="truncate">{{ servicio.name }}</span>
+                      <span class="font-mono">{{ servicio.price | monto }}</span>
+                    </li>
+                  }
+                </ul>
+                @if (serviciosOcultos() > 0) {
+                  <span class="text-small text-muted">+ {{ serviciosOcultos() }} más</span>
+                }
+              } @else {
+                <p class="text-small text-muted">
+                  Todavía no cargaste servicios.
+                  <a routerLink="/panel/servicios" class="text-accent hover:underline"
+                    >Cargar servicios</a
+                  >
+                </p>
+              }
             }
           </div>
           @if (linkPublico()) {
