@@ -1,1 +1,350 @@
-<p>mi-negocio-page works!</p>
+<div class="flex flex-col gap-5" [class.max-lg:pb-20]="hayCambios()">
+  <header class="flex items-end justify-between gap-3">
+    <div class="flex min-w-0 flex-col gap-1">
+      <!-- en el celular se entra desde "Más", así que se vuelve ahí -->
+      <button
+        type="button"
+        (click)="volverAMas()"
+        class="mb-0.5 flex w-fit items-center gap-1 text-[13px] text-muted hover:text-fg lg:hidden"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        Más
+      </button>
+      <span class="text-[13px] text-muted">Configuración</span>
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Mi negocio</h1>
+    </div>
+
+    @if (hayCambios()) {
+      <div class="hidden items-center gap-2.5 lg:flex">
+        <span class="text-small text-muted">Cambios sin guardar</span>
+        <button
+          appBoton
+          variante="secundario"
+          type="button"
+          [disabled]="guardando()"
+          (click)="descartar()"
+        >
+          Descartar
+        </button>
+        <button appBoton type="button" [disabled]="guardando()" (click)="guardar()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    }
+    @if (estado() === 'editar') {
+      <span
+        aria-hidden="true"
+        class="flex size-9.5 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-surface-3 text-[13px] font-bold text-accent lg:hidden"
+      >
+        {{ vistaPrevia().iniciales }}
+      </span>
+    }
+  </header>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <div aria-busy="true" aria-label="Cargando tu negocio" class="flex flex-col gap-3">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="h-16 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold text-danger-fg">No se pudo cargar tu negocio</span>
+          <span class="text-small text-fg-2">{{ errorCarga() }}</span>
+        </div>
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+    @default {
+      <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <form
+          [formGroup]="form"
+          (ngSubmit)="guardar()"
+          class="flex min-w-0 flex-col gap-4"
+          novalidate
+        >
+          @if (estado() === 'crear') {
+            <p class="text-fg-2">
+              Todavía no creaste tu negocio. Completá estos datos y vas a tener tu página para
+              recibir reservas.
+            </p>
+          }
+
+          @if (errorGuardar()) {
+            <p
+              role="alert"
+              class="rounded-control border border-danger-line bg-danger-soft px-3 py-2.5 text-small text-danger-fg"
+            >
+              {{ errorGuardar() }}
+            </p>
+          }
+
+          <div class="grid grid-cols-2 gap-x-2 gap-y-3 lg:gap-3.5">
+            <app-campo
+              etiqueta="Nombre del negocio"
+              [error]="error(form.controls.nombre, mensajes.nombre)"
+              class="col-span-2 lg:col-span-1"
+            >
+              <input
+                formControlName="nombre"
+                maxlength="100"
+                autocomplete="organization"
+                class="max-lg:h-11!"
+              />
+            </app-campo>
+
+            <!-- no usa app-campo porque el input lleva adelante el dominio fijo -->
+            <div class="col-span-2 flex flex-col gap-1.5 lg:col-span-1">
+              <label class="flex flex-col gap-1.5 text-small text-muted">
+                Link público
+                <span
+                  class="flex h-11 items-center overflow-hidden rounded-control border bg-app font-mono text-[13px] focus-within:border-accent lg:h-10"
+                  [class]="
+                    error(form.controls.slug, mensajes.slug) ? 'border-danger' : 'border-line'
+                  "
+                >
+                  <span class="shrink-0 pl-3 text-faint">{{ dominio }}</span>
+                  <input
+                    formControlName="slug"
+                    maxlength="100"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    [attr.aria-invalid]="error(form.controls.slug, mensajes.slug) ? true : null"
+                    [attr.aria-describedby]="
+                      error(form.controls.slug, mensajes.slug) ? 'slug-error' : null
+                    "
+                    class="h-full min-w-0 flex-1 bg-transparent pr-3 text-fg outline-none"
+                  />
+                </span>
+              </label>
+              @if (error(form.controls.slug, mensajes.slug); as mensaje) {
+                <p id="slug-error" class="text-small text-danger-fg">{{ mensaje }}</p>
+              }
+              @if (linkPublico()) {
+                <div class="flex gap-2 lg:hidden">
+                  <ng-container *ngTemplateOutlet="accionesLink" />
+                </div>
+              }
+            </div>
+
+            <app-campo
+              etiqueta="Email de contacto"
+              [error]="error(form.controls.email, mensajes.email)"
+            >
+              <input
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                class="max-lg:h-11!"
+              />
+            </app-campo>
+
+            <app-campo
+              etiqueta="Teléfono"
+              [error]="error(form.controls.telefono, mensajes.telefono)"
+            >
+              <input
+                type="tel"
+                inputmode="tel"
+                formControlName="telefono"
+                autocomplete="tel"
+                placeholder="11 4555 0182"
+                class="font-mono max-lg:h-11!"
+              />
+            </app-campo>
+          </div>
+
+          <!-- no usa app-campo porque el contador va en la misma línea que la etiqueta -->
+          <div class="flex flex-col gap-1.5">
+            <label class="flex flex-col gap-1.5 text-small text-muted">
+              <span class="flex justify-between">
+                Descripción
+                <span class="font-mono tabular-nums"
+                  >{{ largoDescripcion() }} / {{ maxDescripcion }}</span
+                >
+              </span>
+              <textarea
+                formControlName="descripcion"
+                [attr.maxlength]="maxDescripcion"
+                rows="3"
+                placeholder="Contales a tus clientes qué hacés y dónde estás."
+                class="w-full resize-none rounded-control border border-line bg-app px-3 py-2.5 text-body text-fg outline-none placeholder:text-faint focus:border-accent"
+              ></textarea>
+            </label>
+            @if (error(form.controls.descripcion, mensajes.descripcion); as mensaje) {
+              <p class="text-small text-danger-fg">{{ mensaje }}</p>
+            }
+          </div>
+
+          <fieldset class="flex flex-col gap-2">
+            <legend class="pb-2 text-small text-muted">Rubros</legend>
+            @if (rubrosVisibles().length) {
+              <div class="flex flex-wrap gap-1.5 lg:gap-2">
+                @for (rubro of rubrosVisibles(); track rubro.id) {
+                  @let elegido = rubrosElegidos().has(rubro.id);
+                  <button
+                    type="button"
+                    [attr.aria-pressed]="elegido"
+                    (click)="alternarRubro(rubro.id)"
+                    class="flex h-8 items-center rounded-full border px-3 text-[13px] lg:text-body"
+                    [class]="
+                      elegido
+                        ? 'border-accent/30 bg-accent-soft text-accent'
+                        : 'border-line-strong text-fg-2 hover:text-fg'
+                    "
+                  >
+                    @if (elegido) {
+                      <span aria-hidden="true" class="mr-1">✓</span>
+                    }
+                    {{ rubro.name }}
+                  </button>
+                }
+                @if (rubrosOcultos() > 0) {
+                  <button
+                    type="button"
+                    (click)="verTodosLosRubros.set(true)"
+                    class="flex h-8 items-center rounded-full border border-line-strong px-3 text-[13px] text-fg-2 hover:text-fg lg:text-body"
+                  >
+                    + {{ rubrosOcultos() }} más
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="text-small text-muted">Todavía no hay rubros para elegir.</p>
+            }
+          </fieldset>
+
+          @if (estado() === 'crear') {
+            <button
+              appBoton
+              type="submit"
+              [disabled]="guardando()"
+              class="self-start max-lg:w-full"
+            >
+              {{ guardando() ? 'Creando negocio…' : 'Crear negocio' }}
+            </button>
+          } @else {
+            <div
+              class="mt-auto hidden items-center justify-between gap-4 rounded-card border border-danger-line p-4 lg:flex"
+            >
+              <div class="flex flex-col gap-0.5">
+                <span class="font-semibold text-danger-fg">Dar de baja el negocio</span>
+                <span class="text-small text-muted">
+                  Tu página deja de estar visible. Los turnos futuros se suspenden y se devuelven
+                  las señas.
+                </span>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <app-pastilla tono="cielo">Futuro</app-pastilla>
+                <button appBoton variante="destructivo" type="button" disabled>Dar de baja</button>
+              </div>
+            </div>
+
+            <div
+              class="flex items-center justify-between gap-3 border-t border-line py-3 lg:hidden"
+            >
+              <div class="flex flex-col">
+                <span class="text-danger-fg">Dar de baja el negocio</span>
+                <span class="text-small text-muted">Solo lo puede hacer un admin hoy</span>
+              </div>
+              <app-pastilla tono="cielo">Futuro</app-pastilla>
+            </div>
+          }
+        </form>
+
+        <aside
+          aria-label="Vista previa"
+          class="hidden flex-col gap-3 rounded-card border border-line bg-app p-4 lg:flex"
+        >
+          <app-pastilla>Así te ven tus clientes</app-pastilla>
+          <div class="flex flex-col gap-3 rounded-xl bg-surface-1 p-4">
+            <div class="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                class="flex size-12 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-surface-3 font-bold text-accent"
+              >
+                {{ vistaPrevia().iniciales }}
+              </span>
+              <div class="flex min-w-0 flex-col">
+                <span class="truncate text-[17px] font-semibold">{{ vistaPrevia().nombre }}</span>
+                @if (vistaPrevia().rubros) {
+                  <span class="text-small text-muted">{{ vistaPrevia().rubros }}</span>
+                }
+              </div>
+            </div>
+            @if (vistaPrevia().descripcion) {
+              <p class="text-[13px] leading-[1.45] break-words text-fg-2">
+                {{ vistaPrevia().descripcion }}
+              </p>
+            }
+          </div>
+          @if (linkPublico()) {
+            <div class="mt-auto flex gap-2">
+              <ng-container *ngTemplateOutlet="accionesLink" />
+            </div>
+          } @else {
+            <p class="mt-auto text-small text-muted">
+              Cuando crees tu negocio vas a poder copiar el link y abrir tu página.
+            </p>
+          }
+        </aside>
+      </div>
+    }
+  }
+</div>
+
+<ng-template #accionesLink>
+  <button appBoton variante="secundario" type="button" (click)="copiarLink()" class="flex-1">
+    {{ copiado() ? 'Link copiado' : 'Copiar link' }}
+  </button>
+  <a
+    appBoton
+    variante="secundario"
+    [href]="linkPublico()"
+    target="_blank"
+    rel="noopener"
+    class="flex-1"
+  >
+    Abrir página
+  </a>
+</ng-template>
+
+@if (hayCambios()) {
+  <!-- en el celular la barra flota arriba de la barra inferior -->
+  <div
+    class="fixed inset-x-2.5 bottom-21 z-30 flex items-center gap-2 rounded-2xl border border-line-strong bg-surface-1 p-2.5 lg:hidden"
+  >
+    <span class="flex-1 pl-1 text-small text-accent">Cambios sin guardar</span>
+    <button
+      appBoton
+      variante="secundario"
+      type="button"
+      [disabled]="guardando()"
+      (click)="descartar()"
+      class="h-9.5!"
+    >
+      Descartar
+    </button>
+    <button appBoton type="button" [disabled]="guardando()" (click)="guardar()" class="h-9.5!">
+      {{ guardando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+}
