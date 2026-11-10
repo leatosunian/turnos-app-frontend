@@ -1,1 +1,35 @@
-<p>no-encontrado-page works!</p>
+<section
+  class="mx-auto flex min-h-[70dvh] max-w-360 flex-col justify-center gap-4.5 px-5 py-16 lg:gap-5.5 lg:px-20"
+>
+  <div class="flex max-w-190 flex-col gap-4.5 lg:gap-5.5">
+    <p class="font-mono text-small break-all text-muted lg:text-[13px]">
+      {{ dominio }}/<span class="text-danger-fg line-through">{{ ruta() }}</span>
+    </p>
+
+    <h1
+      class="text-[40px] leading-[1.02] font-semibold tracking-[-1.4px] lg:text-display lg:leading-none"
+    >
+      @if (esNegocio()) {
+        No encontramos ese negocio.
+      } @else {
+        No encontramos esa página.
+      }
+    </h1>
+
+    <p class="text-base leading-normal text-fg-2 lg:text-lg">
+      @if (esNegocio()) {
+        Puede que el link tenga un error de tipeo o que el negocio se haya dado de baja. Pedile el
+        link de nuevo a quien te lo pasó.
+      } @else {
+        Puede que el link tenga un error de tipeo o que la página ya no exista.
+      }
+    </p>
+
+    <div class="flex flex-col gap-3 lg:flex-row">
+      <a appBoton grande routerLink="/" class="px-5 text-[15px]">Ir al inicio</a>
+      <a appBoton grande variante="secundario" routerLink="/mis-turnos" class="px-5 text-[15px]">
+        Soy cliente: mis turnos
+      </a>
+    </div>
+  </div>
+</section>
