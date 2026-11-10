@@ -1,4 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -26,12 +27,15 @@ import {
   BusinessResponse,
   BusinessTypeResponse,
 } from '../../../core/models/negocio';
+import { ServResponse } from '../../../core/models/servicio';
 import { NegocioService } from '../../../core/services/negocio-service';
 import { RubroService } from '../../../core/services/rubro-service';
+import { ServicioService } from '../../../core/services/servicio-service';
 import { MenuMasEstado } from '../../../layouts/private-layout/menu-mas/menu-mas-estado';
 import { Boton } from '../../../shared/components/boton/boton';
 import { Campo } from '../../../shared/components/campo/campo';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
+import { MontoPipe } from '../../../shared/pipes/monto-pipe';
 
 type Estado = 'cargando' | 'crear' | 'editar' | 'error';
 
@@ -43,6 +47,8 @@ export const MAX_DESCRIPCION = 300;
 // El back necesita saber cuántos días de turnos generar. Después se ajusta en Horarios.
 export const DIAS_A_GENERAR = 30;
 const RUBROS_VISIBLES = 5;
+// La vista previa muestra los primeros, como la página pública.
+const SERVICIOS_EN_VISTA_PREVIA = 2;
 
 /** Se puede escribir "11 4555 0182": los espacios se sacan antes de mandarlo. */
 function sinEspacios(valor: string): string {
@@ -79,7 +85,7 @@ function iniciales(nombre: string): string {
 }
 
 @Component({
-  imports: [Boton, Campo, NgTemplateOutlet, Pastilla, ReactiveFormsModule],
+  imports: [Boton, Campo, MontoPipe, NgTemplateOutlet, Pastilla, ReactiveFormsModule, RouterLink],
   selector: 'app-mi-negocio-page',
   styleUrl: './mi-negocio-page.css',
   templateUrl: './mi-negocio-page.html',
@@ -87,6 +93,7 @@ function iniciales(nombre: string): string {
 export class MiNegocioPage implements OnInit {
   private readonly negocios = inject(NegocioService);
   private readonly rubrosApi = inject(RubroService);
+  private readonly serviciosApi = inject(ServicioService);
   private readonly menuMas = inject(MenuMasEstado);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(NonNullableFormBuilder);
@@ -98,6 +105,8 @@ export class MiNegocioPage implements OnInit {
   protected readonly errorCarga = signal('');
   /** El negocio como está guardado en el back. */
   protected readonly negocio = signal<BusinessResponse | null>(null);
+  /** Para la vista previa. null si todavía no llegaron o no se pudieron cargar. */
+  protected readonly servicios = signal<ServResponse[] | null>(null);
   protected readonly rubros = signal<BusinessTypeResponse[]>([]);
   protected readonly rubrosElegidos = signal<ReadonlySet<string>>(new Set());
   protected readonly verTodosLosRubros = signal(false);
@@ -216,6 +225,13 @@ export class MiNegocioPage implements OnInit {
     };
   });
 
+  protected readonly serviciosVisibles = computed(
+    () => this.servicios()?.slice(0, SERVICIOS_EN_VISTA_PREVIA) ?? [],
+  );
+  protected readonly serviciosOcultos = computed(
+    () => (this.servicios()?.length ?? 0) - this.serviciosVisibles().length,
+  );
+
   /** Link de la página pública, con el slug guardado (el que se está editando todavía no existe). */
   protected readonly linkPublico = computed(() => {
     const negocio = this.negocio();
@@ -246,6 +262,7 @@ export class MiNegocioPage implements OnInit {
           if (negocio) {
             this.aplicar(negocio);
             this.estado.set('editar');
+            this.cargarServicios(negocio.id);
           } else {
             this.estado.set('crear');
           }
@@ -254,6 +271,17 @@ export class MiNegocioPage implements OnInit {
           this.errorCarga.set(error.message);
           this.estado.set('error');
         },
+      });
+  }
+
+  /** Si falla, la vista previa se muestra sin servicios: no vale la pena trabar la pantalla. */
+  private cargarServicios(businessId: string): void {
+    this.serviciosApi
+      .listar(businessId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (servicios) => this.servicios.set(servicios),
+        error: () => this.servicios.set(null),
       });
   }
 
@@ -321,7 +349,10 @@ export class MiNegocioPage implements OnInit {
   private crear(): Observable<BusinessResponse> {
     const datos: BusinessRequest = { ...this.datosDelForm(), scheduleDaysToCreate: DIAS_A_GENERAR };
     return this.negocios.crear(datos).pipe(
-      tap((negocio) => this.registrar(negocio)),
+      tap((negocio) => {
+        this.registrar(negocio);
+        this.servicios.set([]);
+      }),
       switchMap((negocio) => this.sincronizarRubros(negocio)),
     );
   }
