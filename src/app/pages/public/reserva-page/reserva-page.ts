@@ -5,7 +5,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { MINUTOS_PARA_PAGAR, leerReserva } from '../../../core/models/reserva';
+import { AppointmentResponse } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
+import { AuthService } from '../../../core/services/auth-service';
 import { Boton } from '../../../shared/components/boton/boton';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { FechaPipe } from '../../../shared/pipes/fecha-pipe';
@@ -21,6 +23,7 @@ import { MontoPipe } from '../../../shared/pipes/monto-pipe';
 })
 export class ReservaPage {
   private readonly turnos = inject(AppointmentService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -31,6 +34,8 @@ export class ReservaPage {
   protected readonly ahora = signal(Date.now());
   protected readonly pagando = signal(false);
   protected readonly error = signal('');
+  /** Turno ya pagado, para la confirmación de quien reservó sin sesión. */
+  protected readonly confirmado = signal<AppointmentResponse | null>(null);
 
   protected readonly turno = this.reserva?.turno ?? null;
   protected readonly sena = this.turno?.deposit?.amount ?? null;
@@ -70,8 +75,17 @@ export class ReservaPage {
       .pagarSena(this.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        // Con la seña paga el turno queda confirmado; el ticket pide ir a Mis turnos.
-        next: () => this.router.navigateByUrl('/mis-turnos'),
+        // Con la seña paga el turno queda confirmado. Un cliente logueado va a Mis turnos, como
+        // pide el ticket. Sin sesión, Mis turnos no le mostraría este turno (el back los busca por
+        // usuario), así que se queda acá con la confirmación.
+        next: (turno) => {
+          if (this.auth.tieneRol(['CLIENT'])) {
+            this.router.navigateByUrl('/mis-turnos');
+          } else {
+            this.pagando.set(false);
+            this.confirmado.set(turno);
+          }
+        },
         error: (error: ApiError) => {
           this.pagando.set(false);
           this.error.set(error.message);

@@ -8,6 +8,7 @@ import { ApiError } from '../../../core/models/api-error';
 import { CLAVE_RESERVA, ReservaEnCurso } from '../../../core/models/reserva';
 import { AppointmentResponse } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
+import { AuthService } from '../../../core/services/auth-service';
 import { ReservaPage } from './reserva-page';
 
 registerLocaleData(localeEsAr);
@@ -41,15 +42,16 @@ describe('ReservaPage', () => {
   let pagarSena: ReturnType<typeof vi.fn>;
   let navegar: ReturnType<typeof vi.fn>;
 
-  async function crear(state: unknown) {
+  async function crear(state: unknown, esCliente = false) {
     history.replaceState(state, '');
-    pagarSena = vi.fn(() => of({}));
+    pagarSena = vi.fn(() => of(reserva().turno));
     await TestBed.configureTestingModule({
       imports: [ReservaPage],
       providers: [
         provideRouter([]),
         { provide: LOCALE_ID, useValue: 'es-AR' },
         { provide: AppointmentService, useValue: { pagarSena } },
+        { provide: AuthService, useValue: { tieneRol: () => esCliente } },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 't-1' }) } },
@@ -83,13 +85,24 @@ describe('ReservaPage', () => {
     expect(el().querySelector('[role="timer"]')?.textContent?.trim()).toBe('25:00');
   });
 
-  it('al pagar va a Mis turnos', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva() });
+  it('un cliente logueado, al pagar, va a Mis turnos', async () => {
+    await crear({ [CLAVE_RESERVA]: reserva() }, true);
     botonPagar().click();
     await fixture.whenStable();
 
     expect(pagarSena).toHaveBeenCalledWith('t-1');
     expect(navegar).toHaveBeenCalledWith('/mis-turnos');
+  });
+
+  it('sin sesión, al pagar se queda con la confirmación del turno', async () => {
+    await crear({ [CLAVE_RESERVA]: reserva() });
+    botonPagar().click();
+    await fixture.whenStable();
+
+    expect(navegar).not.toHaveBeenCalled();
+    expect(el().querySelector('h1')?.textContent).toContain('Tu turno quedó confirmado');
+    expect(el().textContent).toContain('Estudio Malbec te espera');
+    expect(el().textContent).toContain('Volver a Estudio Malbec');
   });
 
   it('si el pago falla, muestra el error y deja reintentar', async () => {
