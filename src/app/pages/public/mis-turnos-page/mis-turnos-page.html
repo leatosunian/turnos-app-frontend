@@ -1,1 +1,243 @@
-<p>mis-turnos-page works!</p>
+<div
+  class="mx-auto grid max-w-360 gap-8 px-2.5 py-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:px-20 lg:py-10"
+>
+  <section class="flex min-w-0 flex-col gap-4 lg:gap-5" aria-labelledby="mis-turnos-titulo">
+    <div class="flex flex-col gap-3.5 px-2 lg:flex-row lg:items-end lg:justify-between lg:px-0">
+      <h1
+        id="mis-turnos-titulo"
+        class="text-h1 lg:text-[44px] lg:leading-none lg:tracking-[-1.6px]"
+      >
+        Mis turnos
+      </h1>
+      @if (estado() === 'listo') {
+        <app-segmentado
+          etiqueta="Qué turnos ver"
+          [opciones]="opciones()"
+          [(valor)]="pestania"
+          class="w-full lg:w-fit [&>button]:whitespace-nowrap max-lg:[&>button]:flex-1"
+        />
+      }
+    </div>
+
+    @if (aviso()) {
+      <p role="status" class="rounded-card border border-line bg-surface-1 px-4 py-3 text-fg-2">
+        {{ aviso() }}
+      </p>
+    }
+
+    @switch (estado()) {
+      @case ('cargando') {
+        <p class="px-2 text-muted lg:px-0">Cargando tus turnos…</p>
+      }
+      @case ('error') {
+        <app-aviso-vacio
+          titulo="No pudimos traer tus turnos"
+          detalle="Revisá tu conexión y probá de nuevo."
+        >
+          <button appBoton variante="secundario" type="button" (click)="cargar()">
+            Reintentar
+          </button>
+        </app-aviso-vacio>
+      }
+      @case ('listo') {
+        @if (pestania() === 'proximos') {
+          @for (turno of proximos(); track turno.id; let primero = $first) {
+            <article
+              class="flex flex-col gap-3.5 rounded-container border bg-surface-1 p-4 lg:grid lg:grid-cols-[160px_minmax(0,1fr)_220px] lg:items-center lg:gap-6 lg:p-6"
+              [class]="primero ? 'border-accent/30' : 'border-line'"
+            >
+              <div class="flex items-start justify-between gap-3 lg:flex-col lg:gap-0.5">
+                <div class="flex flex-col gap-0.5">
+                  <span
+                    class="text-[12.5px] font-medium"
+                    [class.text-accent]="primero"
+                    [class.text-muted]="!primero"
+                  >
+                    @if (relativo(turno); as dia) {
+                      {{ dia }} ·
+                    }
+                    {{ turno.startDatetime | fecha: 'corta' }}
+                  </span>
+                  <span
+                    class="font-mono text-[34px] leading-tight tracking-[-1px] lg:text-[44px] lg:tracking-[-1.5px]"
+                    [class.text-fg-2]="!primero"
+                  >
+                    {{ turno.startDatetime | hora }}
+                  </span>
+                </div>
+                <app-estado-turno [turno]="turno" [ahora]="ahora()" class="lg:hidden" />
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <app-estado-turno [turno]="turno" [ahora]="ahora()" class="max-lg:hidden" />
+                <span class="text-base font-semibold lg:text-lg">{{ titulo(turno) }}</span>
+                <span class="text-muted">
+                  @if (turno.employeeName) {
+                    Con {{ turno.employeeName }} ·
+                  }
+                  {{ minutos(turno) | duracion }}
+                  @if (turno.status === 'AWAITING_PAYMENT') {
+                    · Si no pagás la seña, el horario se libera.
+                  }
+                </span>
+                @if (turno.status === 'BOOKED' && turno.deposit) {
+                  <span
+                    class="flex justify-between gap-3 rounded-control bg-app px-3 py-2.5 text-[13px] text-muted lg:block lg:bg-transparent lg:p-0"
+                  >
+                    Seña pagada
+                    <span class="font-mono">
+                      <span class="text-fg">{{ turno.deposit.amount | monto }}</span> de
+                      {{ turno.price | monto }}
+                    </span>
+                  </span>
+                }
+              </div>
+
+              @if (turno.status === 'AWAITING_PAYMENT') {
+                <a appBoton [routerLink]="['/reserva', turno.id]" class="h-11 w-full">
+                  Pagar seña
+                  @if (turno.deposit) {
+                    {{ turno.deposit.amount | monto }}
+                  }
+                </a>
+              } @else {
+                <div class="flex flex-col gap-2">
+                  <div class="flex gap-2 lg:flex-col">
+                    <button
+                      appBoton
+                      variante="secundario"
+                      type="button"
+                      disabled
+                      class="h-11 flex-1 lg:h-10 lg:flex-none"
+                    >
+                      Cómo llegar
+                      <app-pastilla tono="cielo">Futuro</app-pastilla>
+                    </button>
+                    @if (sePuedeCancelar(turno)) {
+                      <button
+                        appBoton
+                        variante="destructivo"
+                        type="button"
+                        class="h-11 flex-1 lg:h-10 lg:flex-none"
+                        (click)="pedirCancelar(turno)"
+                      >
+                        Cancelar turno
+                      </button>
+                    }
+                  </div>
+                  @if (sePuedeCancelar(turno)) {
+                    <span class="text-small text-muted">
+                      @if (seDevuelve(turno)) {
+                        Si cancelás
+                        @if (diaDelLimite(turno); as dia) {
+                          {{ dia }}
+                        } @else {
+                          hasta el {{ limite(turno) | fecha: 'corta' }}
+                        }
+                        antes de las {{ limite(turno) | hora }}, te devolvemos la seña.
+                      } @else {
+                        Faltan menos de 24 h: si cancelás, la seña no se devuelve.
+                      }
+                    </span>
+                  }
+                </div>
+              }
+            </article>
+          } @empty {
+            <app-aviso-vacio
+              titulo="No tenés turnos próximos"
+              detalle="Reservá desde el link que te pasó el negocio y tu turno aparece acá."
+            />
+          }
+        } @else {
+          @if (historial().length) {
+            <ul class="flex flex-col px-2 lg:px-0">
+              @for (turno of historial(); track turno.id) {
+                <li
+                  class="flex flex-col gap-2 border-t border-line py-3.5 sm:flex-row sm:items-center sm:gap-4"
+                >
+                  <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span class="font-medium">{{ titulo(turno) }}</span>
+                    <span class="text-small text-muted">
+                      {{ turno.startDatetime | fecha: 'corta' }} · {{ turno.startDatetime | hora }}
+                      @if (turno.employeeName) {
+                        · Con {{ turno.employeeName }}
+                      }
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <app-estado-turno [turno]="turno" [ahora]="ahora()" />
+                    @if (sena(turno); as sena) {
+                      <span class="text-small text-muted">{{ sena }}</span>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <app-aviso-vacio
+              titulo="Todavía no tenés turnos pasados"
+              detalle="Cuando termine o se cancele un turno, lo vas a ver acá."
+            />
+          }
+        }
+      }
+    }
+  </section>
+
+  @if (estado() === 'listo' && pestania() === 'proximos' && historialReciente().length) {
+    <aside
+      class="flex flex-col gap-2 px-2 lg:gap-3 lg:px-0 lg:pt-1.5"
+      aria-labelledby="reciente-titulo"
+    >
+      <h2 id="reciente-titulo"><app-pastilla>Historial reciente</app-pastilla></h2>
+      <ul class="flex flex-col">
+        @for (turno of historialReciente(); track turno.id) {
+          <li class="flex flex-col gap-1.5 border-t border-line py-3">
+            <div class="flex justify-between gap-3">
+              <span class="text-fg-2">{{ titulo(turno) }}</span>
+              <span class="font-mono text-small text-muted">
+                {{ turno.startDatetime | date: 'dd/MM' }}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <app-estado-turno [turno]="turno" [ahora]="ahora()" />
+              @if (sena(turno); as sena) {
+                <span class="text-small text-muted">{{ sena }}</span>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </aside>
+  }
+</div>
+
+@if (aCancelar(); as turno) {
+  <app-confirmacion
+    titulo="¿Cancelar el turno?"
+    textoConfirmar="Cancelar turno"
+    textoProcesando="Cancelando…"
+    [procesando]="cancelando()"
+    [error]="errorCancelar()"
+    (confirmado)="confirmarCancelar()"
+    (cancelado)="cerrarCancelar()"
+  >
+    <p>
+      {{ titulo(turno) }}, {{ turno.startDatetime | fecha: 'corta' }} a las
+      {{ turno.startDatetime | hora }}.
+    </p>
+    @if (turno.deposit) {
+      <p class="mt-2">
+        @if (seDevuelve(turno)) {
+          Faltan 24 h o más, así que te devolvemos la seña de
+          <span class="font-mono text-fg">{{ turno.deposit.amount | monto }}</span
+          >.
+        } @else {
+          Faltan menos de 24 h, así que la seña de
+          <span class="font-mono text-fg">{{ turno.deposit.amount | monto }}</span> no se devuelve.
+        }
+      </p>
+    }
+  </app-confirmacion>
+}
