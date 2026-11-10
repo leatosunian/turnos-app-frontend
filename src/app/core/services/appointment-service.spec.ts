@@ -62,6 +62,17 @@ describe('AppointmentService', () => {
     expect(total).toBe(11);
   });
 
+  it('deHoy pide los turnos del día', () => {
+    let turnos: AppointmentResponse[] | undefined;
+    service.deHoy('n-1').subscribe((t) => (turnos = t));
+
+    const req = httpMock.expectOne(`${URL}/businesses/n-1/appointments/today`);
+    expect(req.request.method).toBe('GET');
+    req.flush([TURNO]);
+
+    expect(turnos).toEqual([TURNO]);
+  });
+
   it('suspender y eliminar usan su endpoint', () => {
     service.suspender('t-1').subscribe();
     const suspender = httpMock.expectOne(`${URL}/appointments/t-1/suspend`);
