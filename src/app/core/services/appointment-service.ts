@@ -55,4 +55,17 @@ export class AppointmentService {
   eliminar(id: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/appointments/${id}`);
   }
+
+  /** Turnos del cliente con sesión, más nuevos primero. Solo CLIENT. */
+  misTurnos(): Observable<AppointmentResponse[]> {
+    return this.http.get<AppointmentResponse[]>(`${this.url}/users/me/appointments`);
+  }
+
+  /**
+   * Cancela un turno BOOKED o AWAITING_PAYMENT. En uno BOOKED el back devuelve la seña
+   * (REFUNDED) si faltan 24 h o más; si no, el negocio se la queda (FORFEITED).
+   */
+  cancelar(id: string): Observable<AppointmentResponse> {
+    return this.http.put<AppointmentResponse>(`${this.url}/appointments/${id}/cancel`, null);
+  }
 }

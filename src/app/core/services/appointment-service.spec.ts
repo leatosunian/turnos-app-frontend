@@ -73,4 +73,18 @@ describe('AppointmentService', () => {
     expect(eliminar.request.method).toBe('DELETE');
     eliminar.flush(null);
   });
+
+  it('misTurnos y cancelar usan los endpoints del cliente', () => {
+    let turnos: AppointmentResponse[] | undefined;
+    service.misTurnos().subscribe((t) => (turnos = t));
+    const mios = httpMock.expectOne(`${URL}/users/me/appointments`);
+    expect(mios.request.method).toBe('GET');
+    mios.flush([TURNO]);
+    expect(turnos).toEqual([TURNO]);
+
+    service.cancelar('t-1').subscribe();
+    const cancelar = httpMock.expectOne(`${URL}/appointments/t-1/cancel`);
+    expect(cancelar.request.method).toBe('PUT');
+    cancelar.flush({ ...TURNO, status: 'CANCELLED' });
+  });
 });
