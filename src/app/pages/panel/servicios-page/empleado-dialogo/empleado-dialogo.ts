@@ -11,7 +11,7 @@ import { UserResponse } from '../../../../core/models/usuario';
 import { EmpleadoService } from '../../../../core/services/empleado-service';
 import { Boton } from '../../../../shared/components/boton/boton';
 import { Campo } from '../../../../shared/components/campo/campo';
-import { Dialogo } from '../dialogo/dialogo';
+import { Dialogo } from '../../../../shared/components/dialogo/dialogo';
 
 // mismas reglas que el back (EmployeeRequest), iguales a las del registro
 const SOLO_LETRAS = /^[a-zA-Z\s]+$/;

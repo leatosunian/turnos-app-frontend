@@ -8,7 +8,7 @@ import { ServicioService } from '../../../../core/services/servicio-service';
 import { Boton } from '../../../../shared/components/boton/boton';
 import { Campo } from '../../../../shared/components/campo/campo';
 import { MontoPipe } from '../../../../shared/pipes/monto-pipe';
-import { Dialogo } from '../dialogo/dialogo';
+import { Dialogo } from '../../../../shared/components/dialogo/dialogo';
 import { PORCENTAJE_SENA_POR_DEFECTO, montoSena } from '../sena';
 
 const NUMERO_ENTERO = /^\d+$/;
