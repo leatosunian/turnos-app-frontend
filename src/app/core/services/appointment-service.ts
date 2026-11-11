@@ -75,6 +75,14 @@ export class AppointmentService {
     return this.http.put<AppointmentResponse>(`${this.url}/appointments/${id}/suspend`, null);
   }
 
+  /**
+   * Paga la seña de un turno AWAITING_PAYMENT y lo deja BOOKED. Es público: lo usa el cliente
+   * desde /reserva/:id. Por ahora es un pago simulado (Mercado Pago es FUTURO).
+   */
+  pagarSena(id: string): Observable<AppointmentResponse> {
+    return this.http.post<AppointmentResponse>(`${this.url}/appointments/${id}/pay-deposit`, null);
+  }
+
   /** Solo turnos UNBOOKED. */
   eliminar(id: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/appointments/${id}`);

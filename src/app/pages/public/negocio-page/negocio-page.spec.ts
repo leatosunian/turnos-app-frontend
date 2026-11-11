@@ -199,9 +199,10 @@ describe('NegocioPage', () => {
 
     const router = TestBed.inject(Router);
     expect(router.url).toBe('/reserva/t-1');
-    expect(router.lastSuccessfulNavigation()?.extras.state?.['turno'].status).toBe(
-      'AWAITING_PAYMENT',
-    );
+    const state = router.lastSuccessfulNavigation()?.extras.state;
+    expect(state?.['turno'].status).toBe('AWAITING_PAYMENT');
+    expect(state?.['negocio']).toEqual({ name: NEGOCIO.name, slug: NEGOCIO.slug });
+    expect(Number.isNaN(Date.parse(state?.['reservadaEn']))).toBe(false);
   });
 
   it('si el horario se ocupó, avisa y deja elegir otro', async () => {
