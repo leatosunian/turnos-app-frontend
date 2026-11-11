@@ -1,1 +1,358 @@
-<p>servicios-page works!</p>
+<div class="flex flex-col gap-5">
+  <!-- celular: un solo encabezado para las dos pestañas -->
+  <header class="flex items-end justify-between gap-3 lg:hidden">
+    <div class="flex min-w-0 flex-col gap-1">
+      <!-- en el celular se entra desde "Más", así que se vuelve ahí -->
+      <button
+        type="button"
+        (click)="volverAMas()"
+        class="mb-0.5 flex w-fit items-center gap-1 text-[13px] text-muted hover:text-fg"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        Más
+      </button>
+      @if (estado() === 'listo') {
+        <span class="text-[13px] text-muted">{{ resumen() }}</span>
+      }
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px]">Servicios y equipo</h1>
+    </div>
+    @if (estado() === 'listo') {
+      @if (pestania() === 'servicios') {
+        <button appBoton type="button" (click)="nuevoServicio()" class="h-9.5! shrink-0">
+          + Servicio
+        </button>
+      } @else {
+        <button appBoton type="button" (click)="nuevoEmpleado()" class="h-9.5! shrink-0">
+          + Agregar
+        </button>
+      }
+    }
+  </header>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <div aria-busy="true" aria-label="Cargando servicios y equipo" class="flex flex-col gap-2">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="h-16 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('sin-negocio') {
+      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos vas a poder sumar servicios y profesionales."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <div
+        role="alert"
+        class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold text-danger-fg">No se pudieron cargar los servicios</span>
+          <span class="text-small text-fg-2">{{ errorCarga() }}</span>
+        </div>
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+    @case ('listo') {
+      <app-segmentado
+        [opciones]="pestanias"
+        [(valor)]="pestania"
+        etiqueta="Ver servicios o equipo"
+        class="w-full! lg:hidden! [&>button]:flex-1"
+      />
+
+      <div class="flex gap-5">
+        <section
+          aria-label="Servicios"
+          class="flex min-w-0 flex-1 flex-col gap-4"
+          [class.max-lg:hidden]="pestania() !== 'servicios'"
+        >
+          <header class="hidden items-end justify-between lg:flex">
+            <div class="flex flex-col gap-1">
+              <span class="text-[13px] text-muted">{{ resumenServicios() }}</span>
+              <h1 class="text-h1">Servicios</h1>
+            </div>
+            <button appBoton type="button" (click)="nuevoServicio()">+ Servicio</button>
+          </header>
+
+          @if (servicios().length) {
+            <!-- escritorio: tabla -->
+            <div
+              aria-hidden="true"
+              class="hidden grid-cols-[1fr_90px_110px_110px_40px] px-3.5 text-label text-faint lg:grid"
+            >
+              <span>Nombre</span><span>Duración</span><span>Precio</span><span>Seña</span
+              ><span></span>
+            </div>
+            <ul class="flex flex-col gap-1.5 max-lg:gap-2">
+              @for (servicio of servicios(); track servicio.id) {
+                <li
+                  class="relative flex items-center justify-between gap-3 rounded-card border border-line bg-surface-1 px-3.5 py-3 lg:grid lg:grid-cols-[1fr_90px_110px_110px_40px] lg:rounded-xl lg:border-0 lg:bg-surface-2"
+                >
+                  <div class="flex min-w-0 flex-col gap-0.5">
+                    <span class="truncate font-semibold">{{ servicio.name }}</span>
+                    <span class="font-mono text-small text-muted lg:hidden">
+                      {{ servicio.durationMinutes }}' · seña
+                      {{ montoSena(servicio.price, servicio.depositPorcentage) | monto }}
+                    </span>
+                    <span class="hidden text-small text-muted lg:block">
+                      Seña del {{ servicio.depositPorcentage ?? 30 }}%
+                    </span>
+                  </div>
+                  <span class="hidden font-mono lg:block">{{ servicio.durationMinutes }}'</span>
+                  <span class="hidden font-mono lg:block">{{ servicio.price | monto }}</span>
+                  <span class="hidden font-mono text-muted lg:block">
+                    {{ montoSena(servicio.price, servicio.depositPorcentage) | monto }}
+                  </span>
+                  <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-[15px] lg:hidden">{{
+                      servicio.price | monto
+                    }}</span>
+                    <ng-container
+                      *ngTemplateOutlet="menuServicio; context: { $implicit: servicio }"
+                    />
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <app-aviso-vacio
+              titulo="Todavía no cargaste servicios"
+              detalle="Son lo que tus clientes eligen al reservar: duración, precio y seña."
+            >
+              <button appBoton type="button" (click)="nuevoServicio()">Crear el primero</button>
+            </app-aviso-vacio>
+          }
+        </section>
+
+        <aside
+          aria-label="Equipo"
+          class="flex flex-col gap-3.5 max-lg:flex-1 lg:w-90 lg:shrink-0 lg:rounded-card lg:border lg:border-line lg:bg-app lg:p-4.5"
+          [class.max-lg:hidden]="pestania() !== 'equipo'"
+        >
+          <div class="hidden items-center justify-between lg:flex">
+            <h2 class="text-lg font-semibold">Equipo</h2>
+            <button
+              appBoton
+              variante="secundario"
+              type="button"
+              (click)="nuevoEmpleado()"
+              class="h-8.5! px-3!"
+            >
+              + Agregar
+            </button>
+          </div>
+
+          @if (equipo().length) {
+            <ul class="flex flex-col gap-2 lg:gap-3.5">
+              @for (empleado of equipo(); track empleado.id; let i = $index) {
+                <li
+                  class="relative flex items-center gap-3 rounded-card border border-line bg-surface-1 p-3.5 lg:rounded-xl lg:border-0"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="flex size-10 shrink-0 items-center justify-center rounded-full font-semibold"
+                    [class]="i % 2 ? 'bg-info-soft text-info' : 'bg-accent-soft text-accent'"
+                  >
+                    {{ iniciales(empleado.name) }}
+                  </span>
+                  <div class="flex min-w-0 flex-1 flex-col">
+                    <span class="truncate font-semibold">{{ empleado.name }}</span>
+                    <span class="truncate text-small text-muted">{{ empleado.email }}</span>
+                  </div>
+                  <ng-container
+                    *ngTemplateOutlet="menuEmpleado; context: { $implicit: empleado }"
+                  />
+                </li>
+              }
+            </ul>
+          } @else {
+            <app-aviso-vacio
+              titulo="Todavía no agregaste profesionales"
+              detalle="Sumá a quienes atienden para asignarles turnos."
+              class="lg:py-6!"
+            >
+              <button
+                appBoton
+                variante="secundario"
+                type="button"
+                (click)="nuevoEmpleado()"
+                class="lg:hidden"
+              >
+                Agregar el primero
+              </button>
+            </app-aviso-vacio>
+          }
+
+          <p
+            class="rounded-xl border border-dashed border-line-strong p-3.5 text-[13px] leading-[1.45] text-muted lg:mt-auto"
+          >
+            Al quitar a alguien del equipo se desasocia del negocio; sus turnos pasados quedan en
+            las estadísticas.
+          </p>
+        </aside>
+      </div>
+    }
+  }
+</div>
+
+<ng-template #menuServicio let-servicio>
+  <ng-container
+    *ngTemplateOutlet="
+      botonMenu;
+      context: { id: servicio.id, etiqueta: 'Opciones de ' + servicio.name }
+    "
+  />
+  @if (menuAbierto() === servicio.id) {
+    <div
+      role="menu"
+      (click)="$event.stopPropagation()"
+      class="absolute top-full right-0 z-10 mt-1 flex w-48 flex-col rounded-control border border-line-strong bg-surface-2 p-1"
+    >
+      <button
+        type="button"
+        role="menuitem"
+        (click)="editar({ tipo: 'servicio', item: servicio })"
+        class="rounded-lg px-3 py-2 text-left hover:bg-surface-3"
+      >
+        Editar
+      </button>
+      <!-- el back todavía no tiene servicios pausados -->
+      <button
+        type="button"
+        role="menuitem"
+        disabled
+        class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-muted disabled:cursor-not-allowed"
+      >
+        Pausar
+        <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        (click)="pedirBaja({ tipo: 'servicio', item: servicio })"
+        class="rounded-lg px-3 py-2 text-left text-danger-fg hover:bg-danger-soft"
+      >
+        Eliminar
+      </button>
+    </div>
+  }
+</ng-template>
+
+<ng-template #menuEmpleado let-empleado>
+  <ng-container
+    *ngTemplateOutlet="
+      botonMenu;
+      context: { id: empleado.id, etiqueta: 'Opciones de ' + empleado.name }
+    "
+  />
+  @if (menuAbierto() === empleado.id) {
+    <div
+      role="menu"
+      (click)="$event.stopPropagation()"
+      class="absolute top-full right-0 z-10 mt-1 flex w-48 flex-col rounded-control border border-line-strong bg-surface-2 p-1"
+    >
+      <button
+        type="button"
+        role="menuitem"
+        (click)="editar({ tipo: 'empleado', item: empleado })"
+        class="rounded-lg px-3 py-2 text-left hover:bg-surface-3"
+      >
+        Editar
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        (click)="pedirBaja({ tipo: 'empleado', item: empleado })"
+        class="rounded-lg px-3 py-2 text-left text-danger-fg hover:bg-danger-soft"
+      >
+        Quitar del equipo
+      </button>
+    </div>
+  }
+</ng-template>
+
+<ng-template #botonMenu let-id="id" let-etiqueta="etiqueta">
+  <button
+    type="button"
+    (click)="alternarMenu(id, $event)"
+    [attr.aria-expanded]="menuAbierto() === id"
+    aria-haspopup="menu"
+    [attr.aria-label]="etiqueta"
+    class="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-3 hover:text-fg"
+  >
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="5" cy="12" r="1.2" />
+      <circle cx="12" cy="12" r="1.2" />
+      <circle cx="19" cy="12" r="1.2" />
+    </svg>
+  </button>
+</ng-template>
+
+@if (edicion(); as e) {
+  @if (e.tipo === 'servicio') {
+    <app-servicio-dialogo
+      [businessId]="businessId()"
+      [servicio]="e.item"
+      (guardado)="servicioGuardado($event)"
+      (cancelado)="cerrarEdicion()"
+    />
+  } @else {
+    <app-empleado-dialogo
+      [businessId]="businessId()"
+      [empleado]="e.item"
+      (guardado)="empleadoGuardado($event)"
+      (cancelado)="cerrarEdicion()"
+    />
+  }
+}
+
+@if (baja(); as b) {
+  <app-confirmacion
+    [titulo]="
+      b.tipo === 'servicio'
+        ? '¿Eliminar este servicio?'
+        : '¿Quitar a ' + b.item.name + ' del equipo?'
+    "
+    [textoConfirmar]="b.tipo === 'servicio' ? 'Eliminar' : 'Quitar'"
+    [textoProcesando]="b.tipo === 'servicio' ? 'Eliminando…' : 'Quitando…'"
+    [procesando]="procesandoBaja()"
+    [error]="errorBaja()"
+    (confirmado)="confirmarBaja()"
+    (cancelado)="cancelarBaja()"
+  >
+    @if (b.tipo === 'servicio') {
+      {{ b.item.name }} deja de aparecer en tu página para reservar.
+    } @else {
+      Se desasocia del negocio. Sus turnos pasados quedan en las estadísticas.
+    }
+  </app-confirmacion>
+}

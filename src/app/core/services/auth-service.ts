@@ -67,7 +67,9 @@ export class AuthService {
     }
     return this.cargarUsuario().pipe(
       catchError((error: { status?: number }) => {
-        if (error.status === 401) {
+        // Con un token vencido o de un usuario que ya no existe, el back responde 403 y no 401.
+        // Si no se borra, ese token hace fallar todos los pedidos, incluso los públicos.
+        if (error.status === 401 || error.status === 403) {
           this.limpiarSesion();
         }
         return of(null);
