@@ -18,6 +18,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, map, switchMap } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
+import { ReservaEnCurso } from '../../../core/models/reserva';
 import { BusinessResponse } from '../../../core/models/negocio';
 import { ServResponse } from '../../../core/models/servicio';
 import { AppointmentResponse } from '../../../core/models/turno';
@@ -295,9 +296,16 @@ export class NegocioPage {
       .reservar(turno.id, datos)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        // la página de pago no tiene de dónde pedir el turno, así que se lo pasamos
-        next: (reservado) =>
-          this.router.navigate(['/reserva', reservado.id], { state: { turno: reservado } }),
+        // la página de pago no tiene de dónde pedir el turno ni el negocio, así que se los pasamos
+        next: (reservado) => {
+          const negocio = this.negocio()!;
+          const reserva: ReservaEnCurso = {
+            turno: reservado,
+            negocio: { name: negocio.name, slug: negocio.slug },
+            reservadaEn: new Date().toISOString(),
+          };
+          this.router.navigate(['/reserva', reservado.id], { state: reserva });
+        },
         error: (error: ApiError) => {
           this.reservando.set(false);
           if (error.status === 409 || error.status === 404) {

@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
-import { CLAVE_RESERVA, ReservaEnCurso } from '../../../core/models/reserva';
+import { ReservaEnCurso } from '../../../core/models/reserva';
 import { AppointmentResponse } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { AuthService } from '../../../core/services/auth-service';
@@ -70,7 +70,7 @@ describe('ReservaPage', () => {
   afterEach(() => history.replaceState(null, ''));
 
   it('muestra el turno, los montos y la política antes de pagar', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva() });
+    await crear(reserva());
     const texto = el().textContent!;
 
     expect(texto).toContain('Estudio Malbec');
@@ -86,7 +86,7 @@ describe('ReservaPage', () => {
   });
 
   it('un cliente logueado, al pagar, va a Mis turnos', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva() }, true);
+    await crear(reserva(), true);
     botonPagar().click();
     await fixture.whenStable();
 
@@ -95,7 +95,7 @@ describe('ReservaPage', () => {
   });
 
   it('sin sesión, al pagar se queda con la confirmación del turno', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva() });
+    await crear(reserva());
     botonPagar().click();
     await fixture.whenStable();
 
@@ -106,7 +106,7 @@ describe('ReservaPage', () => {
   });
 
   it('si el pago falla, muestra el error y deja reintentar', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva() });
+    await crear(reserva());
     pagarSena.mockReturnValue(
       throwError(() => ({ status: 400, message: 'La reserva ya no está pendiente' }) as ApiError),
     );
@@ -119,7 +119,7 @@ describe('ReservaPage', () => {
   });
 
   it('si pasaron los 30 minutos, no deja pagar', async () => {
-    await crear({ [CLAVE_RESERVA]: reserva(31) });
+    await crear(reserva(31));
 
     expect(el().textContent).toContain('Se venció el tiempo para pagar');
     expect(botonPagar().disabled).toBe(true);
