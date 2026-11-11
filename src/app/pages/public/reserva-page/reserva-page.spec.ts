@@ -105,6 +105,27 @@ describe('ReservaPage', () => {
     expect(el().textContent).toContain('Volver a Estudio Malbec');
   });
 
+  it('al pagar guarda el turno pago en el state, asi sobrevive a una recarga', async () => {
+    await crear(reserva());
+    const pago = { ...reserva().turno, status: 'BOOKED' } as AppointmentResponse;
+    pagarSena.mockReturnValue(of(pago));
+    botonPagar().click();
+    await fixture.whenStable();
+
+    expect(history.state.turno.status).toBe('BOOKED');
+    expect(history.state.negocio.slug).toBe('estudio-malbec');
+  });
+
+  it('si se recarga despues de pagar, muestra la confirmacion y no deja pagar de nuevo', async () => {
+    const recargada = reserva();
+    recargada.turno = { ...recargada.turno, status: 'BOOKED' };
+    await crear(recargada);
+
+    expect(el().querySelector('h1')?.textContent).toContain('Tu turno quedó confirmado');
+    expect(botonPagar()).toBeUndefined();
+    expect(pagarSena).not.toHaveBeenCalled();
+  });
+
   it('si el pago falla, muestra el error y deja reintentar', async () => {
     await crear(reserva());
     pagarSena.mockReturnValue(

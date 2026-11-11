@@ -27,15 +27,21 @@ export class ReservaPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly historial = inject(DOCUMENT).defaultView?.history;
+
   protected readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   /** null si se entró por link (sin pasar por la reserva): el back no deja traer el turno. */
-  protected readonly reserva = leerReserva(inject(DOCUMENT).defaultView?.history.state, this.id);
+  protected readonly reserva = leerReserva(this.historial?.state, this.id);
 
   protected readonly ahora = signal(Date.now());
   protected readonly pagando = signal(false);
   protected readonly error = signal('');
-  /** Turno ya pagado, para la confirmación de quien reservó sin sesión. */
-  protected readonly confirmado = signal<AppointmentResponse | null>(null);
+  // Turno ya pagado, para la confirmacion de quien reservo sin sesion.
+  // Si el turno que viene en el state ya esta pago (BOOKED) arrancamos directo en la confirmacion.
+  // Eso pasa cuando el cliente paga y despues recarga la pagina (ver guardarPago mas abajo)
+  protected readonly confirmado = signal<AppointmentResponse | null>(
+    this.reserva?.turno.status === 'BOOKED' ? this.reserva.turno : null,
+  );
 
   protected readonly turno = this.reserva?.turno ?? null;
   protected readonly sena = this.turno?.deposit?.amount ?? null;
@@ -60,7 +66,8 @@ export class ReservaPage {
   });
 
   constructor() {
-    if (this.reserva) {
+    // el reloj de los 30 minutos solo hace falta mientras el turno espera el pago
+    if (this.reserva && !this.confirmado()) {
       interval(1000)
         .pipe(takeUntilDestroyed())
         .subscribe(() => this.ahora.set(Date.now()));
@@ -79,6 +86,7 @@ export class ReservaPage {
         // pide el ticket. Sin sesión, Mis turnos no le mostraría este turno (el back los busca por
         // usuario), así que se queda acá con la confirmación.
         next: (turno) => {
+          this.guardarPago(turno);
           if (this.auth.tieneRol(['CLIENT'])) {
             this.router.navigateByUrl('/mis-turnos');
           } else {
@@ -91,6 +99,17 @@ export class ReservaPage {
           this.error.set(error.message);
         },
       });
+  }
+
+  // El navegador guarda el state de la navegacion y lo vuelve a dar cuando se recarga la pagina.
+  // Ahi viene el turno como estaba al reservarlo, esperando la seña. Si no lo pisamos con el
+  // turno pago, al recargar se vuelve a mostrar el boton de pagar y el back contesta que el
+  // turno no esta esperando un pago.
+  // Copiamos el state entero y solo cambiamos el turno, porque el router de Angular guarda ahi
+  // su propio dato (navigationId) y no hay que perderlo. replaceState sin url deja la misma url.
+  private guardarPago(turno: AppointmentResponse): void {
+    if (!this.historial || !this.reserva) return;
+    this.historial.replaceState({ ...this.historial.state, turno }, '');
   }
 }
 
