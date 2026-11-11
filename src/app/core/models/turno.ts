@@ -30,6 +30,18 @@ export interface AppointmentResponse {
 }
 
 /**
+ * Datos del cliente al reservar. Si hay sesión, el back usa el nombre y el email del usuario
+ * logueado y solo toma el teléfono.
+ */
+export interface BookAppointmentRequest {
+  /** Hasta 100 caracteres. */
+  clientName?: string;
+  clientEmail?: string;
+  /** Entre 7 y 20 caracteres: dígitos, espacios, '+' o '-'. */
+  clientPhone?: string;
+}
+
+/**
  * Solo se suspenden turnos reservados que todavía no terminaron (Confirmado o En curso).
  * El back deja suspender cualquier BOOKED, pero en uno terminado le devolvería la seña al cliente.
  */

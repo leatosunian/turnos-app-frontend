@@ -17,6 +17,11 @@ export class NegocioService {
     return this.http.get<BusinessResponse>(`${this.url}/mine`);
   }
 
+  /** Perfil público del negocio. Si el slug no existe, el back responde 404. */
+  porSlug(slug: string): Observable<BusinessResponse> {
+    return this.http.get<BusinessResponse>(`${this.url}/slug/${encodeURIComponent(slug)}`);
+  }
+
   /** Crea el negocio del dueño logueado. Un dueño sólo puede tener uno. */
   crear(datos: BusinessRequest): Observable<BusinessResponse> {
     return this.http.post<BusinessResponse>(this.url, datos);

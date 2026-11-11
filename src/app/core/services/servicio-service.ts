@@ -12,7 +12,7 @@ export class ServicioService {
     return `${environment.apiUrl}/businesses/${businessId}/services`;
   }
 
-  /** Exige estar logueado aunque sea para la página pública (problema conocido del back). */
+  /** Es público: lo usa también el perfil del negocio. */
   listar(businessId: string): Observable<ServResponse[]> {
     return this.http.get<ServResponse[]>(this.url(businessId));
   }
