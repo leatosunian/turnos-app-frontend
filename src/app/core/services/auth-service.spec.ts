@@ -101,6 +101,25 @@ describe('AuthService', () => {
     expect(localStorage.getItem('token')).toBeNull();
   });
 
+  it('restaurarSesion también descarta el token si el back responde 403', () => {
+    localStorage.setItem('token', 'de-un-usuario-borrado');
+    crear();
+    auth.restaurarSesion().subscribe();
+    httpMock.expectOne(`${URL}/me`).flush(null, { status: 403, statusText: 'Forbidden' });
+
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(auth.logueado()).toBe(false);
+  });
+
+  it('restaurarSesion mantiene el token si el back no responde', () => {
+    localStorage.setItem('token', 'abc');
+    crear();
+    auth.restaurarSesion().subscribe();
+    httpMock.expectOne(`${URL}/me`).flush(null, { status: 0, statusText: 'Unknown Error' });
+
+    expect(localStorage.getItem('token')).toBe('abc');
+  });
+
   it('restaurarSesion no llama al back si no hay token', () => {
     crear();
     auth.restaurarSesion().subscribe();
