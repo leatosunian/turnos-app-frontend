@@ -30,6 +30,17 @@ describe('NegocioService', () => {
     expect(resultado?.slug).toBe('estudio-malbec');
   });
 
+  it('porSlug pide el perfil público del negocio', () => {
+    let resultado: BusinessResponse | undefined;
+    service.porSlug('estudio-malbec').subscribe((negocio) => (resultado = negocio));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/businesses/slug/estudio-malbec`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 'n-1', name: 'Estudio Malbec', slug: 'estudio-malbec' });
+
+    expect(resultado?.id).toBe('n-1');
+  });
+
   it('crear hace POST con los datos del negocio', () => {
     const datos = { name: 'Estudio', email: 'a@b.com', slug: 'estudio', phone: '1145550182' };
     service.crear(datos).subscribe();
