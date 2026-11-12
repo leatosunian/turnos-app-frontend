@@ -1,1 +1,255 @@
-<p>admin-negocios-page works!</p>
+<div class="flex flex-col gap-3 lg:gap-5">
+  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
+    <div class="flex flex-col gap-0.5 lg:gap-1">
+      @if (estado() === 'listo') {
+        <p class="text-[13px] text-muted">
+          {{ total() }} {{ total() === 1 ? 'negocio' : 'negocios' }}
+          @if (deBaja()) {
+            · {{ deBaja() }} de baja
+          }
+        </p>
+      }
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Negocios</h1>
+    </div>
+
+    @if (estado() === 'listo') {
+      <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <label
+          class="flex h-11 items-center gap-2 rounded-control border border-line bg-surface-1 px-3 text-faint focus-within:border-line-strong lg:h-10 lg:w-65 lg:bg-app"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            aria-hidden="true"
+            class="shrink-0"
+          >
+            <circle cx="11" cy="11" r="6" />
+            <path d="M20 20l-4.5-4.5" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Buscar negocio o slug"
+            aria-label="Buscar negocio, slug o dueño"
+            [value]="busqueda()"
+            (input)="buscar($any($event.target).value)"
+            class="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-faint"
+          />
+        </label>
+        <select
+          aria-label="Filtrar por rubro"
+          [value]="rubro()"
+          (change)="filtrarRubro($any($event.target).value)"
+          class="h-11 rounded-control border border-line-strong bg-surface-2 px-3 text-fg lg:h-10"
+        >
+          <option value="">Todos los rubros</option>
+          @for (tipo of rubros(); track tipo.id) {
+            <option [value]="tipo.id">{{ tipo.name }}</option>
+          }
+        </select>
+      </div>
+    }
+  </header>
+
+  @if (aviso()) {
+    <p role="status" class="rounded-card border border-line bg-surface-2 px-4 py-3 text-fg-2">
+      {{ aviso() }}
+    </p>
+  }
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="text-muted">Cargando negocios…</p>
+    }
+    @case ('error') {
+      <app-aviso-vacio
+        titulo="No pudimos traer los negocios"
+        detalle="Revisá tu conexión y probá de nuevo."
+      >
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </app-aviso-vacio>
+    }
+    @case ('listo') {
+      @if (filtrados().length) {
+        <!-- Escritorio: tabla -->
+        <div class="hidden rounded-card border border-line bg-app p-1 lg:block">
+          <table class="w-full table-fixed border-collapse text-left">
+            <thead>
+              <tr class="text-small font-medium text-faint">
+                <th scope="col" class="w-[30%] px-3 py-2.5 font-medium">Negocio</th>
+                <th scope="col" class="px-3 py-2.5 font-medium">Dueño</th>
+                <th scope="col" class="px-3 py-2.5 font-medium">Rubros</th>
+                <th scope="col" class="w-28 px-3 py-2.5 font-medium">Estado</th>
+                <th scope="col" class="w-30 px-3 py-2.5"><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (negocio of visibles(); track negocio.id) {
+                <tr class="border-t border-line" [class.text-muted]="negocio.deleted">
+                  <td class="px-3 py-2.75">
+                    <div class="flex min-w-0 flex-col">
+                      <span class="truncate font-semibold">{{ negocio.name }}</span>
+                      <span class="truncate font-mono text-[11.5px] text-muted"
+                        >/{{ negocio.slug }}</span
+                      >
+                    </div>
+                  </td>
+                  <td class="truncate px-3 py-2.75 text-fg-2">{{ duenio(negocio) }}</td>
+                  <td class="truncate px-3 py-2.75 text-fg-2">{{ rubrosDe(negocio) }}</td>
+                  <td class="px-3 py-2.75">
+                    <span
+                      class="inline-flex items-center gap-1.5 text-small"
+                      [class]="negocio.deleted ? 'text-muted' : 'text-success'"
+                    >
+                      <span
+                        class="size-1.75 rounded-full"
+                        [class]="negocio.deleted ? 'bg-idle' : 'bg-success'"
+                        aria-hidden="true"
+                      ></span>
+                      {{ negocio.deleted ? 'De baja' : 'Activo' }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2.75 text-right">
+                    @if (!negocio.deleted) {
+                      <button
+                        type="button"
+                        class="rounded-lg px-2 py-1 text-small text-danger-fg hover:bg-danger-soft"
+                        [attr.aria-label]="'Dar de baja ' + negocio.name"
+                        (click)="pedirBaja(negocio)"
+                      >
+                        Dar de baja
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div
+            class="flex items-center justify-between gap-4 border-t border-line p-3 text-small text-muted"
+          >
+            <span>
+              Dar de baja oculta la página del negocio. Es un borrado lógico: los datos quedan para
+              las estadísticas.
+            </span>
+            <ng-container *ngTemplateOutlet="paginador" />
+          </div>
+        </div>
+
+        <!-- Celular: tarjetas -->
+        <ul class="flex flex-col gap-2.5 lg:hidden">
+          @for (negocio of visibles(); track negocio.id) {
+            <li
+              class="flex items-center justify-between gap-2.5 rounded-card bg-surface-1 px-3.5 py-3"
+              [class.text-muted]="negocio.deleted"
+            >
+              <div class="flex min-w-0 flex-col gap-0.5">
+                <span class="truncate font-semibold">{{ negocio.name }}</span>
+                <span class="truncate font-mono text-[11px] text-muted">/{{ negocio.slug }}</span>
+                @if (rubrosDe(negocio)) {
+                  <span class="truncate text-small text-muted">{{ rubrosDe(negocio) }}</span>
+                }
+                @if (duenio(negocio)) {
+                  <span class="truncate text-small text-muted">{{ duenio(negocio) }}</span>
+                }
+              </div>
+              <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <span class="text-[11px]" [class]="negocio.deleted ? 'text-muted' : 'text-success'">
+                  {{ negocio.deleted ? 'De baja' : 'Activo' }}
+                </span>
+                @if (!negocio.deleted) {
+                  <button
+                    type="button"
+                    class="flex h-9 items-center rounded-lg border border-danger-line px-3 text-small text-danger-fg"
+                    [attr.aria-label]="'Dar de baja ' + negocio.name"
+                    (click)="pedirBaja(negocio)"
+                  >
+                    Dar de baja
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+        <div class="flex flex-col gap-2 text-small text-muted lg:hidden">
+          <ng-container *ngTemplateOutlet="paginador" />
+          <p>Dar de baja oculta la página del negocio. Los datos quedan para las estadísticas.</p>
+        </div>
+      } @else {
+        <app-aviso-vacio
+          [titulo]="total() ? 'Ningún negocio coincide' : 'Todavía no hay negocios'"
+          [detalle]="total() ? 'Probá con otro nombre, slug o rubro.' : ''"
+        />
+      }
+    }
+  }
+</div>
+
+<ng-template #paginador>
+  <div class="flex items-center justify-between gap-3">
+    <span class="shrink-0 font-mono text-small tabular-nums">
+      {{ desde() }}–{{ hasta() }} de {{ filtrados().length }}
+    </span>
+    @if (totalPaginas() > 1) {
+      <nav aria-label="Páginas" class="flex gap-1.5">
+        <button
+          type="button"
+          (click)="cambiarPagina(paginaActual() - 1)"
+          [disabled]="paginaActual() === 0"
+          aria-label="Página anterior"
+          class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"
+        >
+          ‹
+        </button>
+        @for (numero of paginas(); track $index) {
+          @if (numero === null) {
+            <span aria-hidden="true" class="flex size-7.5 items-center justify-center">…</span>
+          } @else {
+            <button
+              type="button"
+              (click)="cambiarPagina(numero)"
+              [attr.aria-current]="numero === paginaActual() ? 'page' : null"
+              [class.bg-line]="numero === paginaActual()"
+              [class.text-fg]="numero === paginaActual()"
+              class="flex h-7.5 min-w-7.5 items-center justify-center rounded-lg px-1.5 font-mono text-small hover:bg-surface-2"
+            >
+              {{ numero + 1 }}
+            </button>
+          }
+        }
+        <button
+          type="button"
+          (click)="cambiarPagina(paginaActual() + 1)"
+          [disabled]="paginaActual() + 1 >= totalPaginas()"
+          aria-label="Página siguiente"
+          class="flex size-7.5 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-40"
+        >
+          ›
+        </button>
+      </nav>
+    }
+  </div>
+</ng-template>
+
+@if (aDarDeBaja(); as negocio) {
+  <app-confirmacion
+    [titulo]="'¿Dar de baja ' + negocio.name + '?'"
+    textoConfirmar="Dar de baja"
+    textoProcesando="Dando de baja…"
+    [procesando]="procesando()"
+    [error]="errorBaja()"
+    (confirmado)="confirmarBaja()"
+    (cancelado)="cerrarBaja()"
+  >
+    <p>
+      La página <span class="font-mono text-fg">/{{ negocio.slug }}</span> deja de estar disponible
+      y sus profesionales quedan inactivos. Los datos se guardan para las estadísticas.
+    </p>
+    <p class="mt-2">No se puede dar de baja si tiene turnos pendientes.</p>
+  </app-confirmacion>
+}
