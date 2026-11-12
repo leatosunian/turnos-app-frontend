@@ -1,1 +1,210 @@
-<p>admin-rubros-page works!</p>
+<div class="flex flex-col gap-3 lg:gap-5">
+  <header class="flex flex-col gap-0.5 lg:gap-1">
+    @if (estado() === 'listo') {
+      <p class="text-[13px] text-muted">
+        {{ rubros().length }} {{ rubros().length === 1 ? 'rubro' : 'rubros' }}
+        <span class="max-lg:hidden">· se usan en el registro y en cada perfil</span>
+      </p>
+    }
+    <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Rubros</h1>
+  </header>
+
+  @if (aviso()) {
+    <p role="status" class="rounded-card border border-line bg-surface-2 px-4 py-3 text-fg-2">
+      {{ aviso() }}
+    </p>
+  }
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="text-muted">Cargando rubros…</p>
+    }
+    @case ('error') {
+      <app-aviso-vacio
+        titulo="No pudimos traer los rubros"
+        detalle="Revisá tu conexión y probá de nuevo."
+      >
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </app-aviso-vacio>
+    }
+    @case ('listo') {
+      <div class="flex flex-col gap-3 lg:flex-row-reverse lg:items-start lg:gap-4">
+        <aside class="flex flex-col gap-3 lg:w-80 lg:shrink-0">
+          <form
+            (submit)="$event.preventDefault(); crear()"
+            novalidate
+            aria-labelledby="nuevo-rubro"
+            class="flex flex-col gap-3.5 lg:rounded-card lg:border lg:border-line lg:bg-app lg:p-4.5"
+          >
+            <h2 id="nuevo-rubro" class="sr-only text-lg font-semibold lg:not-sr-only">
+              Nuevo rubro
+            </h2>
+            <div class="flex items-end gap-2 lg:flex-col lg:items-stretch lg:gap-3.5">
+              <app-campo
+                etiqueta="Nombre del rubro"
+                [error]="errorNuevoVisible() || null"
+                class="min-w-0 flex-1 max-lg:[&_input]:h-11"
+              >
+                <input
+                  type="text"
+                  maxlength="50"
+                  placeholder="Ej.: Kinesiología"
+                  [value]="nuevo()"
+                  (input)="escribirNuevo($any($event.target).value)"
+                />
+              </app-campo>
+              <button
+                type="submit"
+                [disabled]="creando()"
+                class="h-11 shrink-0 rounded-control bg-info px-4 font-semibold text-app hover:opacity-90 disabled:opacity-60 lg:h-10"
+              >
+                <span class="lg:hidden">{{ creando() ? 'Creando…' : 'Crear' }}</span>
+                <span class="max-lg:hidden">{{ creando() ? 'Creando…' : 'Crear rubro' }}</span>
+              </button>
+            </div>
+            <p class="text-small text-muted max-lg:hidden">
+              Tiene que ser único. Lo ven los dueños al elegir rubros.
+            </p>
+          </form>
+
+          <div
+            class="hidden flex-col gap-1 rounded-card border border-info-line bg-info-soft px-4 py-3.5 lg:flex"
+          >
+            <span class="font-semibold text-info">Antes de eliminar</span>
+            <span class="text-[13px] leading-normal text-fg-2">
+              Si un rubro tiene negocios asociados, conviene editarlo en vez de borrarlo. Borrar es
+              lógico y el rubro deja de aparecer en el registro.
+            </span>
+          </div>
+        </aside>
+
+        @if (rubros().length) {
+          <ul
+            aria-label="Rubros"
+            class="flex min-w-0 flex-1 flex-col rounded-[16px] border border-line bg-surface-1 px-3.5 py-1 lg:rounded-card lg:bg-app lg:p-1"
+          >
+            <li
+              aria-hidden="true"
+              class="hidden grid-cols-[minmax(0,1fr)_90px_170px] gap-3 px-3 py-2.5 text-small font-medium text-faint lg:grid"
+            >
+              <span>Nombre</span>
+              <span class="text-right">Negocios</span>
+              <span></span>
+            </li>
+            @for (rubro of rubros(); track rubro.id; let primero = $first) {
+              <li
+                class="flex flex-col gap-2 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_90px_170px] lg:items-center lg:gap-3 lg:border-t lg:border-line lg:px-3 lg:py-2.25"
+                [class.border-t]="!primero"
+                [class.border-line]="!primero"
+              >
+                @if (editando() === rubro.id) {
+                  <form
+                    (submit)="$event.preventDefault(); guardarEdicion(rubro)"
+                    novalidate
+                    class="flex flex-col gap-2 lg:col-span-3 lg:flex-row lg:items-start"
+                  >
+                    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <input
+                        type="text"
+                        maxlength="50"
+                        [attr.aria-label]="'Nuevo nombre para ' + rubro.name"
+                        [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                        [attr.aria-describedby]="errorEdicion() ? 'error-edicion' : null"
+                        [value]="nombreEditado()"
+                        (input)="nombreEditado.set($any($event.target).value); errorEdicion.set('')"
+                        (keydown.escape)="cancelarEdicion()"
+                        class="h-10 w-full rounded-control border bg-app px-3 text-fg outline-none focus:border-accent"
+                        [class.border-danger]="errorEdicion()"
+                        [class.border-line]="!errorEdicion()"
+                      />
+                      @if (errorEdicion()) {
+                        <p id="error-edicion" class="text-small text-danger-fg">
+                          {{ errorEdicion() }}
+                        </p>
+                      }
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        appBoton
+                        variante="secundario"
+                        type="button"
+                        class="flex-1"
+                        (click)="cancelarEdicion()"
+                        [disabled]="guardando()"
+                      >
+                        Cancelar
+                      </button>
+                      <button appBoton type="submit" class="flex-1" [disabled]="guardando()">
+                        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+                      </button>
+                    </div>
+                  </form>
+                } @else {
+                  <div class="flex items-center justify-between gap-3 lg:contents">
+                    <span class="min-w-0 truncate">{{ rubro.name }}</span>
+                    @if (negocios(rubro) !== null) {
+                      <span
+                        class="shrink-0 font-mono text-small text-muted lg:text-right lg:text-body lg:text-fg-2"
+                      >
+                        {{ negocios(rubro) }}
+                        <span class="lg:hidden">{{
+                          negocios(rubro) === 1 ? 'negocio' : 'negocios'
+                        }}</span>
+                      </span>
+                    } @else {
+                      <span class="max-lg:hidden"></span>
+                    }
+                  </div>
+                  <div class="flex justify-end gap-1 text-[13px]">
+                    <button
+                      type="button"
+                      class="rounded-lg px-2.5 py-1.5 text-fg-2 hover:bg-surface-2"
+                      [attr.aria-label]="'Editar ' + rubro.name"
+                      (click)="empezarEdicion(rubro)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-lg px-2.5 py-1.5 text-danger-fg hover:bg-danger-soft"
+                      [attr.aria-label]="'Eliminar ' + rubro.name"
+                      (click)="pedirEliminar(rubro)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-aviso-vacio
+            titulo="Todavía no hay rubros"
+            detalle="Creá el primero para que los negocios lo puedan elegir."
+            class="flex-1"
+          />
+        }
+      </div>
+    }
+  }
+</div>
+
+@if (aEliminar(); as rubro) {
+  <app-confirmacion
+    [titulo]="'¿Eliminar el rubro ' + rubro.name + '?'"
+    textoConfirmar="Eliminar"
+    textoProcesando="Eliminando…"
+    [procesando]="eliminando()"
+    [error]="errorBaja()"
+    (confirmado)="confirmarEliminar()"
+    (cancelado)="cerrarEliminar()"
+  >
+    <p>Deja de aparecer en el registro y en la lista.</p>
+    @if (negocios(rubro)) {
+      <p class="mt-2">
+        Lo usan {{ negocios(rubro) }} {{ negocios(rubro) === 1 ? 'negocio' : 'negocios' }}. Si solo
+        querés cambiarle el nombre, mejor editalo.
+      </p>
+    }
+  </app-confirmacion>
+}
