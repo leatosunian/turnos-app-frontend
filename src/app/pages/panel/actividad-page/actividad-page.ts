@@ -2,13 +2,10 @@ import { formatDate, formatNumber } from '@angular/common';
 import { Component, DestroyRef, LOCALE_ID, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, forkJoin, of, switchMap } from 'rxjs';
-import {
-  EmployeeStatsResponse,
-  PeriodoActividad,
-  periodoAnterior,
-} from '../../../core/models/actividad';
-import { ActividadService } from '../../../core/services/actividad-service';
+import { PeriodoActividad, periodoAnterior } from '../../../core/models/actividad';
+import { EmployeeStatsResponse } from '../../../core/models/estadisticas';
 import { AuthService } from '../../../core/services/auth-service';
+import { EstadisticasService } from '../../../core/services/estadisticas-service';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
 import { Boton } from '../../../shared/components/boton/boton';
 import { OpcionSegmentado, Segmentado } from '../../../shared/components/segmentado/segmentado';
@@ -37,7 +34,7 @@ function fechaLocal(iso: string): Date {
   templateUrl: './actividad-page.html',
 })
 export class ActividadPage implements OnInit {
-  private readonly actividad = inject(ActividadService);
+  private readonly estadisticas = inject(EstadisticasService);
   private readonly auth = inject(AuthService);
   private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
@@ -123,9 +120,9 @@ export class ActividadPage implements OnInit {
           if (!businessId || !employeeId) return of('sin-negocio' as const);
 
           return forkJoin({
-            actual: this.actividad.delEmpleado(businessId, employeeId, periodo),
+            actual: this.estadisticas.delEmpleado(businessId, employeeId, periodo),
             // si falla la comparación, se muestra igual el período actual
-            anterior: this.actividad
+            anterior: this.estadisticas
               .delEmpleado(businessId, employeeId, periodoAnterior(periodo))
               .pipe(catchError(() => of(null))),
           }).pipe(catchError(() => of('error' as const)));
@@ -164,7 +161,7 @@ export class ActividadPage implements OnInit {
       case 'WEEK':
         return 'la semana pasada';
       case 'MONTH': {
-        const desde = fechaLocal(periodoAnterior('MONTH').from);
+        const desde = fechaLocal(periodoAnterior('MONTH').desde);
         return formatDate(desde, 'MMMM', this.locale);
       }
       case 'YEAR':

@@ -4,14 +4,11 @@ import { LOCALE_ID, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
-import {
-  EmployeeStatsResponse,
-  PeriodoActividad,
-  PeriodoFechas,
-} from '../../../core/models/actividad';
+import { PeriodoActividad } from '../../../core/models/actividad';
+import { EmployeeStatsResponse, RangoEstadisticas } from '../../../core/models/estadisticas';
 import { UserResponse } from '../../../core/models/usuario';
-import { ActividadService } from '../../../core/services/actividad-service';
 import { AuthService } from '../../../core/services/auth-service';
+import { EstadisticasService } from '../../../core/services/estadisticas-service';
 import { ActividadPage } from './actividad-page';
 
 registerLocaleData(localeEsAr);
@@ -56,7 +53,7 @@ describe('ActividadPage', () => {
         (
           b: string,
           e: string,
-          p: PeriodoActividad | PeriodoFechas,
+          p: PeriodoActividad | RangoEstadisticas,
         ) => Observable<EmployeeStatsResponse>
       >
     >;
@@ -91,7 +88,7 @@ describe('ActividadPage', () => {
       providers: [
         provideRouter([]),
         { provide: LOCALE_ID, useValue: 'es-AR' },
-        { provide: ActividadService, useValue: servicio },
+        { provide: EstadisticasService, useValue: servicio },
         { provide: AuthService, useValue: { usuario, cerrarSesion } },
       ],
     });
@@ -104,8 +101,8 @@ describe('ActividadPage', () => {
 
     expect(servicio.delEmpleado).toHaveBeenCalledWith('n-1', 'e-1', 'MONTH');
     expect(servicio.delEmpleado).toHaveBeenCalledWith('n-1', 'e-1', {
-      from: '2026-10-01',
-      to: '2026-10-31',
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
     });
   });
 
@@ -158,8 +155,8 @@ describe('ActividadPage', () => {
 
     expect(servicio.delEmpleado).toHaveBeenCalledWith('n-1', 'e-1', 'WEEK');
     expect(servicio.delEmpleado).toHaveBeenCalledWith('n-1', 'e-1', {
-      from: '2026-11-02',
-      to: '2026-11-08',
+      desde: '2026-11-02',
+      hasta: '2026-11-08',
     });
     expect(texto()).toContain('vs la semana pasada');
   });
