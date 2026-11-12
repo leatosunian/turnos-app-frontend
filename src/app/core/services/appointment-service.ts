@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResponse, Pagina, aPagina } from '../models/pagina';
-import { AppointmentResponse, AppointmentStatus } from '../models/turno';
+import { AppointmentResponse, AppointmentStatus, BookAppointmentRequest } from '../models/turno';
 
 export interface FiltroTurnos {
   /** Sin estado trae todos. */
@@ -19,7 +19,7 @@ export interface FiltroTurnos {
 /** Más nuevos primero. */
 export const ORDEN_TURNOS = 'startDatetime,desc';
 
-/** Turnos del panel del negocio. Lo usan Turnos, Hoy y Agenda. */
+/** Turnos del panel del negocio (Turnos, Hoy y Agenda) y la reserva desde el perfil público. */
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
   private readonly http = inject(HttpClient);
@@ -46,9 +46,41 @@ export class AppointmentService {
     return this.listar(businessId, { status, size: 1 }).pipe(map((pagina) => pagina.total));
   }
 
+  /** Todos los turnos de hoy (libres incluidos), ordenados por hora. Solo OWNER y ADMIN. */
+  deHoy(businessId: string): Observable<AppointmentResponse[]> {
+    return this.http.get<AppointmentResponse[]>(
+      `${this.url}/businesses/${businessId}/appointments/today`,
+    );
+  }
+
+  /** Turnos libres (UNBOOKED) que todavía no empezaron. Es público. */
+  libres(businessId: string, serviceId?: string): Observable<AppointmentResponse[]> {
+    const params = serviceId ? new HttpParams().set('serviceId', serviceId) : undefined;
+    return this.http.get<AppointmentResponse[]>(
+      `${this.url}/businesses/${businessId}/appointments/public`,
+      { params },
+    );
+  }
+
+  /**
+   * Toma un turno libre: queda AWAITING_PAYMENT con la seña PENDING. Es público.
+   * Si alguien lo tomó antes, el back responde 409.
+   */
+  reservar(id: string, datos: BookAppointmentRequest): Observable<AppointmentResponse> {
+    return this.http.post<AppointmentResponse>(`${this.url}/appointments/${id}/book`, datos);
+  }
+
   /** Solo turnos BOOKED. Le devuelve la seña al cliente. */
   suspender(id: string): Observable<AppointmentResponse> {
     return this.http.put<AppointmentResponse>(`${this.url}/appointments/${id}/suspend`, null);
+  }
+
+  /**
+   * Paga la seña de un turno AWAITING_PAYMENT y lo deja BOOKED. Es público: lo usa el cliente
+   * desde /reserva/:id. Por ahora es un pago simulado (Mercado Pago es FUTURO).
+   */
+  pagarSena(id: string): Observable<AppointmentResponse> {
+    return this.http.post<AppointmentResponse>(`${this.url}/appointments/${id}/pay-deposit`, null);
   }
 
   /** Solo turnos UNBOOKED. */

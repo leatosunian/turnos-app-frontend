@@ -1,12 +1,16 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsAr from '@angular/common/locales/es-AR';
+import { LOCALE_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { appConfig } from '../../app.config';
 import { HoraPipe } from './hora-pipe';
+
+registerLocaleData(localeEsAr);
 
 describe('HoraPipe', () => {
   let pipe: HoraPipe;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: appConfig.providers });
+    TestBed.configureTestingModule({ providers: [{ provide: LOCALE_ID, useValue: 'es-AR' }] });
     pipe = TestBed.runInInjectionContext(() => new HoraPipe());
   });
 
