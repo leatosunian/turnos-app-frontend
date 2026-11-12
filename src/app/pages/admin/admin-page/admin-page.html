@@ -1,1 +1,204 @@
-<p>admin-page works!</p>
+<div class="flex flex-col gap-4">
+  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div class="flex items-end justify-between gap-3">
+      <div class="flex min-w-0 flex-col gap-0.5">
+        <span class="text-[13px] text-muted lg:hidden"
+          >Plataforma · {{ textoPeriodo() || '…' }}</span
+        >
+        <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">
+          <span class="lg:hidden">Resumen</span>
+          <span class="max-lg:hidden">Plataforma · {{ textoPeriodo() || '…' }}</span>
+        </h1>
+      </div>
+      <app-pastilla tono="cielo" class="self-start lg:hidden">Admin</app-pastilla>
+    </div>
+
+    <app-segmentado
+      [opciones]="opciones"
+      [valor]="opcion()"
+      (valorChange)="elegirOpcion($event)"
+      etiqueta="Período"
+      class="max-lg:w-full! max-lg:[&>button]:flex-1"
+    />
+  </header>
+
+  @if (error()) {
+    <div
+      role="alert"
+      class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+    >
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold text-danger-fg">No se pudo cargar el resumen</span>
+        <span class="text-small text-fg-2">{{ error() }}</span>
+      </div>
+      <button appBoton variante="secundario" type="button" (click)="pedir()">Reintentar</button>
+    </div>
+  } @else if (!stats()) {
+    <ng-container *ngTemplateOutlet="esqueleto" />
+  } @else {
+    @let s = stats()!;
+    <div
+      class="flex flex-col gap-3 transition-opacity"
+      [class.opacity-60]="cargando()"
+      [attr.aria-busy]="cargando()"
+    >
+      <section
+        aria-label="Números de la plataforma"
+        class="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2.5"
+      >
+        <div
+          class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5 lg:gap-1 lg:border-0 lg:bg-surface-2 lg:px-4"
+        >
+          <span class="text-small text-muted">Negocios</span>
+          <span class="font-mono text-[21px] leading-7 lg:text-[26px] lg:leading-8">{{
+            s.totalBusinesses | number
+          }}</span>
+          <span class="text-[11px] text-muted lg:text-small"
+            >{{ s.activeBusinessesInPeriod | number }} activos<span class="max-lg:hidden">
+              en el período</span
+            ></span
+          >
+        </div>
+        <div
+          class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5 lg:gap-1 lg:border-0 lg:bg-surface-2 lg:px-4"
+        >
+          <span class="text-small text-muted">Usuarios</span>
+          <span class="font-mono text-[21px] leading-7 lg:text-[26px] lg:leading-8">{{
+            s.totalUsers | number
+          }}</span>
+          <span
+            class="text-[11px] text-muted lg:text-small"
+            [class.text-success]="s.newUsersInPeriod > 0"
+            >+{{ s.newUsersInPeriod | number }} nuevos</span
+          >
+        </div>
+        <div
+          class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5 lg:gap-1 lg:border-0 lg:bg-surface-2 lg:px-4"
+        >
+          <span class="text-small text-muted">Turnos</span>
+          <span class="font-mono text-[21px] leading-7 lg:text-[26px] lg:leading-8">{{
+            s.appointments.total | number
+          }}</span>
+          <span class="text-[11px] text-muted lg:text-small">
+            @if (porcentajeCancelados() !== null) {
+              {{ porcentajeCancelados() | number: '1.0-1' }}% cancelados
+            } @else {
+              Sin turnos
+            }
+          </span>
+        </div>
+        <div
+          class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5 lg:gap-1 lg:border-0 lg:bg-surface-2 lg:px-4"
+        >
+          <span class="text-small text-muted"
+            >Señas<span class="max-lg:hidden"> procesadas</span></span
+          >
+          <span
+            class="font-mono text-[21px] leading-7 lg:text-[26px] lg:leading-8"
+            [title]="s.revenue.depositsCollected | monto"
+            >{{ montoCorto(s.revenue.depositsCollected) }}</span
+          >
+          <span class="text-[11px] text-muted lg:text-small"
+            >{{ montoCorto(s.revenue.depositsRefunded) }} devueltas</span
+          >
+        </div>
+      </section>
+
+      <div class="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_1.4fr]">
+        <section
+          aria-labelledby="titulo-crecimiento"
+          class="flex flex-col gap-3 rounded-card border border-line bg-surface-1 p-4 lg:bg-app lg:p-4.5"
+        >
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="titulo-crecimiento" class="text-base font-semibold">
+              Usuarios nuevos<span class="max-lg:hidden"> por mes</span>
+            </h2>
+            <span class="text-small text-muted">últimos 6 meses</span>
+          </div>
+          <ul
+            class="grid h-28 grid-cols-6 items-end gap-2 lg:h-auto lg:min-h-48 lg:flex-1 lg:gap-2.5"
+          >
+            @for (mes of meses(); track mes.clave) {
+              <li
+                [attr.aria-label]="
+                  mes.largo +
+                  ': ' +
+                  mes.cantidad +
+                  (mes.cantidad === 1 ? ' usuario nuevo' : ' usuarios nuevos')
+                "
+                class="flex h-full flex-col items-center justify-end gap-1.5"
+              >
+                <span
+                  aria-hidden="true"
+                  class="font-mono text-[11px]"
+                  [class]="mes.actual ? 'text-info' : 'text-muted'"
+                  >{{ mes.cantidad | number }}</span
+                >
+                <div class="flex w-full max-w-10 flex-1 items-end" aria-hidden="true">
+                  <div
+                    class="w-full rounded-t"
+                    [class]="mes.actual ? 'bg-info' : 'bg-info-line'"
+                    [style.height]="mes.cantidad ? mes.alto + '%' : '2px'"
+                  ></div>
+                </div>
+                <span
+                  aria-hidden="true"
+                  class="text-[11px]"
+                  [class]="mes.actual ? 'font-semibold text-fg' : 'text-muted'"
+                  >{{ mes.corto }}</span
+                >
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section
+          aria-labelledby="titulo-negocios"
+          class="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-surface-1 p-4 lg:bg-app lg:p-4.5"
+        >
+          <h2 id="titulo-negocios" class="text-base font-semibold">Negocios con más turnos</h2>
+          @if (s.topBusinesses.length) {
+            <table class="w-full text-[13px]">
+              <thead class="max-lg:sr-only">
+                <tr class="text-left text-label text-faint">
+                  <th class="w-8 pb-1.5 font-medium"><span class="sr-only">Puesto</span>#</th>
+                  <th class="pb-1.5 font-medium">Negocio</th>
+                  <th class="pb-1.5 text-right font-medium">Turnos</th>
+                  <th class="pb-1.5 pl-3 text-right font-medium max-lg:hidden">Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (negocio of s.topBusinesses; track negocio.businessId) {
+                  <!-- en el celular sólo los 5 primeros -->
+                  <tr class="border-t border-line" [class.max-lg:hidden]="$index >= 5">
+                    <td class="py-2 font-mono text-faint">{{ $index + 1 }}</td>
+                    <td class="max-w-0 truncate py-2 pr-2">{{ negocio.businessName }}</td>
+                    <td class="py-2 text-right font-mono tabular-nums">
+                      {{ negocio.appointmentCount | number }}
+                    </td>
+                    <td class="py-2 pl-3 text-right font-mono tabular-nums max-lg:hidden">
+                      {{ negocio.revenue | monto }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="text-small text-muted">Ningún negocio tuvo turnos en este período.</p>
+          }
+        </section>
+      </div>
+    </div>
+  }
+</div>
+
+<ng-template #esqueleto>
+  <div aria-busy="true" aria-label="Cargando el resumen" class="flex flex-col gap-3">
+    <div class="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="h-24 animate-pulse rounded-card bg-surface-2"></div>
+      }
+    </div>
+    <div class="h-48 animate-pulse rounded-card bg-surface-2"></div>
+  </div>
+</ng-template>

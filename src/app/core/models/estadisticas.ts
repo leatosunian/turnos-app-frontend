@@ -79,3 +79,42 @@ export interface EmployeeStatsResponse {
   revenueGenerated: number;
   byService: ServiceStatsDto[];
 }
+
+export interface AdminAppointmentStatsDto {
+  total: number;
+  finished: number;
+  cancelled: number;
+  suspended: number;
+}
+
+export interface BusinessSummaryDto {
+  businessId: string;
+  businessName: string;
+  appointmentCount: number;
+  revenue: number;
+}
+
+/** month: 1 = enero ... 12 = diciembre. Sólo vienen los meses con altas. */
+export interface GrowthPointDto {
+  year: number;
+  month: number;
+  newUsers: number;
+}
+
+/**
+ * totalBusinesses no cuenta los dados de baja y totalUsers no cuenta los inactivos.
+ * userGrowth no depende del período: son siempre los últimos 6 meses.
+ */
+export interface AdminStatsResponse {
+  period: PeriodResponse;
+  totalBusinesses: number;
+  /** Negocios con al menos un turno en el período. */
+  activeBusinessesInPeriod: number;
+  totalUsers: number;
+  newUsersInPeriod: number;
+  appointments: AdminAppointmentStatsDto;
+  revenue: RevenueStatsDto;
+  /** Hasta 10, de más a menos turnos. */
+  topBusinesses: BusinessSummaryDto[];
+  userGrowth: GrowthPointDto[];
+}

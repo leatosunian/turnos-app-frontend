@@ -54,4 +54,20 @@ describe('EstadisticasService', () => {
     req.flush({});
     httpMock.verify();
   });
+
+  it('deAdmin pide las estadísticas de la plataforma', () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const service = TestBed.inject(EstadisticasService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.deAdmin('YEAR').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/admin/stats`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('period')).toBe('YEAR');
+    req.flush({});
+    httpMock.verify();
+  });
 });
