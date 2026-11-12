@@ -60,6 +60,7 @@ export const routes: Routes = [
       },
       {
         path: 'actividad',
+        canActivate: [rolGuard(['EMPLOYEE'])],
         loadComponent: () =>
           import('./pages/panel/actividad-page/actividad-page').then((m) => m.ActividadPage),
       },
