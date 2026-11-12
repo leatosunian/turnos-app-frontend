@@ -23,9 +23,12 @@
   --color-accent-hover: #f2bd6b;
   --color-accent-soft: #2e2614;
   --color-on-accent: #1a1408;
+  /* borde de las tarjetas ambar, por ejemplo los turnos programados de horarios */
+  --color-accent-line: #5a4220;
 
   --color-success: #8fc6a3;
   --color-success-soft: #1a2a20;
+  --color-success-line: #35503f;
 
   --color-danger: #e07a5f;
   --color-danger-fg: #e8957f;

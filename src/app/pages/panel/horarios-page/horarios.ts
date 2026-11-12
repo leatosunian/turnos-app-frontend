@@ -102,6 +102,18 @@ export function opcionesDeHora(paso = 15): string[] {
   return horas;
 }
 
+// Suma una hora a la lista de opciones de un select si no estaba, en su lugar segun la hora.
+// Hace falta porque un select no puede mostrar un valor que no esta entre sus opciones: si un
+// dia cierra 23:59 (cargado desde Swagger) y las opciones van de a 15, el select mostraria 00:00.
+// Por ejemplo con 10:00, 10:15 y 10:30, sumar 10:20 deja 10:00, 10:15, 10:20 y 10:30.
+// Acepta la hora con segundos (23:59:00) y la deja sin.
+export function conHora(horas: string[], hora: string | null): string[] {
+  if (!hora) return horas;
+  const corta = horaCorta(hora);
+  // como todas tienen el formato hh:mm, ordenarlas como texto ya las ordena por hora
+  return horas.includes(corta) ? horas : [...horas, corta].sort();
+}
+
 // Arma la grilla de un dia: una fila por cada intervalo entre la hora de inicio y la de fin,
 // y en cada fila los turnos programados que arrancan en esa franja, ordenados por hora.
 // turnos: los turnos programados de ese dia
