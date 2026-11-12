@@ -1,0 +1,52 @@
+<app-dialogo
+  [titulo]="empleado() ? 'Editar profesional' : 'Agregar profesional'"
+  [bloqueado]="guardando()"
+  (cerrado)="cancelado.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate class="flex flex-col gap-4">
+    <app-campo etiqueta="Nombre y apellido" [error]="error(form.controls.nombre, mensajes.nombre)">
+      <input formControlName="nombre" autocomplete="off" />
+    </app-campo>
+    <app-campo etiqueta="Email" [error]="error(form.controls.email, mensajes.email)">
+      <input type="email" formControlName="email" autocomplete="off" />
+    </app-campo>
+    <app-campo
+      [etiqueta]="empleado() ? 'Contraseña nueva' : 'Contraseña'"
+      [error]="error(form.controls.password, mensajes.password)"
+    >
+      <input type="password" formControlName="password" autocomplete="new-password" />
+    </app-campo>
+    <p class="-mt-2 text-small text-muted">
+      @if (empleado()) {
+        Para guardar cambios hay que ponerle una contraseña nueva. Pasásela para que pueda seguir
+        ingresando.
+      } @else {
+        Con este email y esta contraseña va a ingresar al panel. Pasáselos.
+      }
+      Mínimo 8 caracteres, con una mayúscula, una minúscula y un número.
+    </p>
+
+    @if (errorServidor()) {
+      <p role="alert" class="text-small text-danger-fg">{{ errorServidor() }}</p>
+    }
+
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button
+        appBoton
+        variante="secundario"
+        type="button"
+        [disabled]="guardando()"
+        (click)="cancelado.emit()"
+      >
+        Cancelar
+      </button>
+      <button appBoton type="submit" [disabled]="guardando()">
+        @if (guardando()) {
+          Guardando…
+        } @else {
+          {{ empleado() ? 'Guardar cambios' : 'Agregar' }}
+        }
+      </button>
+    </div>
+  </form>
+</app-dialogo>

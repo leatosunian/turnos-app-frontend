@@ -1,0 +1,79 @@
+<app-dialogo
+  [titulo]="servicio() ? 'Editar servicio' : 'Nuevo servicio'"
+  [bloqueado]="guardando()"
+  (cerrado)="cancelado.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate class="flex flex-col gap-4">
+    <app-campo etiqueta="Nombre" [error]="error(form.controls.nombre, mensajes.nombre)">
+      <input formControlName="nombre" maxlength="80" placeholder="Corte clásico" />
+    </app-campo>
+
+    <div class="grid grid-cols-2 gap-3">
+      <app-campo
+        etiqueta="Duración (minutos)"
+        [error]="error(form.controls.duracion, mensajes.duracion)"
+      >
+        <input
+          type="number"
+          inputmode="numeric"
+          formControlName="duracion"
+          min="1"
+          max="480"
+          step="5"
+          class="font-mono"
+        />
+      </app-campo>
+      <app-campo etiqueta="Precio ($)" [error]="error(form.controls.precio, mensajes.precio)">
+        <input
+          type="number"
+          inputmode="decimal"
+          formControlName="precio"
+          min="0"
+          step="100"
+          class="font-mono"
+        />
+      </app-campo>
+    </div>
+
+    <app-campo etiqueta="Seña (%)" [error]="error(form.controls.sena, mensajes.sena)">
+      <input
+        type="number"
+        inputmode="numeric"
+        formControlName="sena"
+        min="0"
+        max="100"
+        class="font-mono"
+      />
+    </app-campo>
+    @if (sena() !== null) {
+      <p class="-mt-2 text-small text-muted">
+        Para reservar se paga una seña de
+        <span class="font-mono text-fg-2">{{ sena() | monto }}</span
+        >.
+      </p>
+    }
+
+    @if (errorServidor()) {
+      <p role="alert" class="text-small text-danger-fg">{{ errorServidor() }}</p>
+    }
+
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button
+        appBoton
+        variante="secundario"
+        type="button"
+        [disabled]="guardando()"
+        (click)="cancelado.emit()"
+      >
+        Cancelar
+      </button>
+      <button appBoton type="submit" [disabled]="guardando()">
+        @if (guardando()) {
+          Guardando…
+        } @else {
+          {{ servicio() ? 'Guardar cambios' : 'Crear servicio' }}
+        }
+      </button>
+    </div>
+  </form>
+</app-dialogo>
