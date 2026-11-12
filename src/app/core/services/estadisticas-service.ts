@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AdminStatsResponse,
   BusinessStatsResponse,
   EmployeeStatsResponse,
   PeriodoEstadisticas,
@@ -18,7 +19,7 @@ function parametros(filtro: FiltroEstadisticas): HttpParams {
     : new HttpParams().set('dateFrom', filtro.desde).set('dateTo', filtro.hasta);
 }
 
-/** Estadísticas del negocio. Solo el dueño del negocio. Lo usan Hoy y Estadísticas. */
+/** Estadísticas del negocio (sólo el dueño) y de la plataforma (sólo ADMIN). */
 @Injectable({ providedIn: 'root' })
 export class EstadisticasService {
   private readonly http = inject(HttpClient);
@@ -40,5 +41,12 @@ export class EstadisticasService {
       `${this.url}/businesses/${businessId}/stats/employees/${employeeId}`,
       { params: parametros(filtro) },
     );
+  }
+
+  /** Estadísticas de toda la plataforma. Sólo ADMIN. */
+  deAdmin(filtro: FiltroEstadisticas): Observable<AdminStatsResponse> {
+    return this.http.get<AdminStatsResponse>(`${this.url}/admin/stats`, {
+      params: parametros(filtro),
+    });
   }
 }
