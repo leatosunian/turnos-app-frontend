@@ -37,4 +37,11 @@ describe('Interruptor', () => {
     boton().click();
     expect(fixture.componentInstance.encendido()).toBe(false);
   });
+
+  it('en tono cielo se prende en celeste', async () => {
+    fixture.componentRef.setInput('tono', 'cielo');
+    boton().click();
+    await fixture.whenStable();
+    expect(boton().classList).toContain('bg-info');
+  });
 });

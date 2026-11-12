@@ -8,3 +8,8 @@ export interface UserResponse {
   active: boolean;
   roles: RoleName[];
 }
+
+/** Reemplaza todos los roles del usuario. Tiene que tener al menos uno. */
+export interface RoleUpdateRequest {
+  roles: RoleName[];
+}
