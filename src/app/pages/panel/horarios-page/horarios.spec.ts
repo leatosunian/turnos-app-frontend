@@ -9,6 +9,9 @@ import {
   opcionesDeHora,
   ordenarSemana,
   PedidoLote,
+  erroresDeAgenda,
+  mensajeDeGeneracion,
+  pedidoDeNegocio,
   proximaRenovacion,
   seSuperponen,
   tonoDeProfesional,
@@ -234,5 +237,63 @@ describe('horarios', () => {
     it('sin agenda cargada no hay renovacion', () => {
       expect(proximaRenovacion(null, 5, hoy)).toBeNull();
     });
+  });
+});
+
+describe('agenda automatica', () => {
+  it('erroresDeAgenda respeta los limites del back', () => {
+    expect(erroresDeAgenda(14, 5)).toEqual({ dias: null, anticipacion: null });
+    expect(erroresDeAgenda(0, 0).dias).toBe('Poné entre 1 y 180 días.');
+    expect(erroresDeAgenda(181, 5).dias).toBe('Poné entre 1 y 180 días.');
+    expect(erroresDeAgenda(14, 61).anticipacion).toBe('Poné entre 0 y 60 días.');
+    // un campo vacio llega como NaN
+    expect(erroresDeAgenda(Number.NaN, 5).dias).not.toBeNull();
+    expect(erroresDeAgenda(14, 2.5).anticipacion).not.toBeNull();
+  });
+
+  it('erroresDeAgenda pide que la anticipacion sea menor que los dias a crear', () => {
+    expect(erroresDeAgenda(7, 7).anticipacion).toBe('Tiene que ser menor que los días a crear.');
+    expect(erroresDeAgenda(7, 6).anticipacion).toBeNull();
+  });
+
+  it('pedidoDeNegocio manda todo el negocio como esta, sin tocar los rubros', () => {
+    const pedido = pedidoDeNegocio({
+      id: 'n-1',
+      name: 'Barberia',
+      email: 'b@b.test',
+      slug: 'barberia',
+      phone: '541145678901',
+      description: null,
+      automaticSchedule: true,
+      scheduleEnd: '2026-11-25T00:00:00',
+      scheduleDaysToCreate: 14,
+      scheduleAnticipation: 5,
+      deleted: false,
+      ownerId: 'u-1',
+      businessTypes: [],
+    });
+    expect(pedido).toEqual({
+      name: 'Barberia',
+      email: 'b@b.test',
+      slug: 'barberia',
+      phone: '541145678901',
+      description: undefined,
+      automaticSchedule: true,
+      scheduleEnd: '2026-11-25T00:00:00',
+      scheduleDaysToCreate: 14,
+      scheduleAnticipation: 5,
+    });
+  });
+
+  it('mensajeDeGeneracion cuenta los turnos libres que quedaron', () => {
+    expect(mensajeDeGeneracion(16, 18, '2026-11-25T00:00:00')).toBe(
+      'Listo, quedaron 18 turnos libres publicados hasta el 25/11 (antes había 16).',
+    );
+    expect(mensajeDeGeneracion(1, 1, '2026-11-25T00:00:00')).toBe(
+      'Listo, quedó 1 turno libre publicado hasta el 25/11 (igual que antes).',
+    );
+    expect(mensajeDeGeneracion(4, 0, null)).toBe(
+      'No se generó ningún turno. Revisá que haya días abiertos con turnos programados.',
+    );
   });
 });

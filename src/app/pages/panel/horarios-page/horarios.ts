@@ -4,6 +4,7 @@ import {
   DayScheduleResponse,
   DiaSemana,
 } from '../../../core/models/horario';
+import { BusinessRequest, BusinessResponse } from '../../../core/models/negocio';
 
 // Funciones que usa la pantalla de Horarios (HorariosPage) para armar la grilla de la plantilla
 // semanal, validar los turnos programados, armar las tandas de Asignar en lote y el resumen de la
@@ -281,4 +282,69 @@ export function proximaRenovacion(
   const renovacion = new Date(anio, mes - 1, dia - anticipacion);
   const manana = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1);
   return renovacion < manana ? manana : renovacion;
+}
+
+// Limites que pone el back para la agenda automatica (BusinessRequest)
+export const DIAS_A_CREAR = { min: 1, max: 180 };
+export const ANTICIPACION = { min: 0, max: 60 };
+
+// Valida los dos campos de la agenda automatica antes de mandarlos. Devuelve el error de cada
+// uno o null si esta bien. Ademas de los limites del back pedimos que la anticipacion sea menor
+// que los dias a crear: con 7 dias y 10 de anticipacion la agenda se renovaria todas las noches.
+// dias y anticipacion llegan como numero, pero pueden ser NaN si el campo quedo vacio
+export function erroresDeAgenda(
+  dias: number,
+  anticipacion: number,
+): { dias: string | null; anticipacion: string | null } {
+  let errorDias: string | null = null;
+  let errorAnticipacion: string | null = null;
+  if (!Number.isInteger(dias) || dias < DIAS_A_CREAR.min || dias > DIAS_A_CREAR.max) {
+    errorDias = `Poné entre ${DIAS_A_CREAR.min} y ${DIAS_A_CREAR.max} días.`;
+  }
+  if (
+    !Number.isInteger(anticipacion) ||
+    anticipacion < ANTICIPACION.min ||
+    anticipacion > ANTICIPACION.max
+  ) {
+    errorAnticipacion = `Poné entre ${ANTICIPACION.min} y ${ANTICIPACION.max} días.`;
+  } else if (!errorDias && anticipacion >= dias) {
+    errorAnticipacion = 'Tiene que ser menor que los días a crear.';
+  }
+  return { dias: errorDias, anticipacion: errorAnticipacion };
+}
+
+// El PUT del negocio pisa todos los campos, asi que para cambiar solo la agenda automatica hay
+// que mandar el resto como esta. typeIds no va: si falta, el back deja los rubros como estaban.
+// scheduleEnd tambien va tal cual, porque si llega null el back pierde hasta donde estaba cargada
+export function pedidoDeNegocio(negocio: BusinessResponse): BusinessRequest {
+  return {
+    name: negocio.name,
+    email: negocio.email,
+    slug: negocio.slug,
+    phone: negocio.phone,
+    description: negocio.description ?? undefined,
+    automaticSchedule: negocio.automaticSchedule,
+    scheduleEnd: negocio.scheduleEnd,
+    scheduleDaysToCreate: negocio.scheduleDaysToCreate,
+    scheduleAnticipation: negocio.scheduleAnticipation,
+  };
+}
+
+// El texto que queda abajo del boton "Generar turnos ahora". El back no dice cuantos turnos
+// creo, asi que la pantalla cuenta los libres antes y despues y arma el mensaje con eso.
+// hasta: el scheduleEnd que quedo, por ejemplo 2026-11-25T00:00:00 se muestra como 25/11.
+// Por ejemplo con 16 antes, 18 despues y hasta el 25/11 da "Listo, quedaron 18 turnos libres
+// publicados hasta el 25/11 (antes había 16)."
+export function mensajeDeGeneracion(antes: number, despues: number, hasta: string | null): string {
+  if (despues === 0) {
+    return 'No se generó ningún turno. Revisá que haya días abiertos con turnos programados.';
+  }
+  // el corte saca el dia y el mes de la fecha sin pasar por Date, asi no se corre por la zona
+  const fecha = hasta ? ` hasta el ${hasta.slice(8, 10)}/${hasta.slice(5, 7)}` : '';
+  const turnos =
+    despues === 1
+      ? 'quedó 1 turno libre publicado'
+      : `quedaron ${despues} turnos libres publicados`;
+  const comparacion = antes === despues ? 'igual que antes' : `antes había ${antes}`;
+  return `Listo, ${turnos}${fecha} (${comparacion}).`;
 }
