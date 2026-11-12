@@ -1,6 +1,12 @@
 /** Período de las estadísticas. Sin período el back usa MONTH. */
 export type PeriodoEstadisticas = 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR';
 
+/** Rango de fechas propio, en formato LocalDate ("2026-06-24"). Incluye las dos puntas. */
+export interface RangoEstadisticas {
+  desde: string;
+  hasta: string;
+}
+
 export interface PeriodResponse {
   from: string;
   to: string;
@@ -54,4 +60,22 @@ export interface BusinessStatsResponse {
   byEmployee: EmployeeSummaryDto[];
   peakDays: DayStatsDto[];
   uniqueClientsCount: number;
+}
+
+export interface EmployeeAppointmentStatsDto {
+  total: number;
+  finished: number;
+  upcoming: number;
+  cancelled: number;
+  occupancyRate: number;
+}
+
+export interface EmployeeStatsResponse {
+  employeeId: string;
+  employeeName: string;
+  period: PeriodResponse;
+  appointments: EmployeeAppointmentStatsDto;
+  hoursWorked: number;
+  revenueGenerated: number;
+  byService: ServiceStatsDto[];
 }
