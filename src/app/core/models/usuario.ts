@@ -7,6 +7,12 @@ export interface UserResponse {
   createdAt: string;
   active: boolean;
   roles: RoleName[];
+  /**
+   * Negocio en el que trabaja un EMPLOYEE. Pedido al back para Mi actividad (TA-29): hoy
+   * /auth/me no lo trae y un EMPLOYEE no puede pedir /businesses/mine.
+   */
+  businessId?: string | null;
+  businessName?: string | null;
 }
 
 /** Reemplaza todos los roles del usuario. Tiene que tener al menos uno. */

@@ -1,1 +1,175 @@
-<p>actividad-page works!</p>
+<div class="flex flex-col gap-3 lg:gap-5">
+  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
+    <div class="flex min-w-0 flex-col gap-0.5 lg:gap-1">
+      <p class="text-[13px] text-muted">
+        @if (rango()) {
+          {{ rango() }}
+        }
+        @if (rango() && negocio()) {
+          ·
+        }
+        @if (negocio()) {
+          {{ negocio() }}
+        }
+      </p>
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">
+        Hola{{ nombre() ? ', ' + nombre() : '' }}
+      </h1>
+    </div>
+
+    @if (estado() !== 'sin-negocio') {
+      <app-segmentado
+        etiqueta="Período"
+        [opciones]="periodos"
+        [valor]="periodo()"
+        (valorChange)="elegirPeriodo($event)"
+        class="w-full lg:w-fit [&>button]:whitespace-nowrap max-lg:[&>button]:flex-1"
+      />
+    }
+  </header>
+
+  @switch (estado()) {
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no podemos mostrar tus números"
+        detalle="No encontramos el negocio en el que trabajás. Probá de nuevo más tarde."
+      />
+    }
+    @case ('error') {
+      <app-aviso-vacio
+        titulo="No pudimos traer tus números"
+        detalle="Revisá tu conexión y probá de nuevo."
+      >
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </app-aviso-vacio>
+    }
+    @default {
+      @if (stats(); as stats) {
+        <div
+          class="flex flex-col gap-3 transition-opacity lg:gap-5"
+          [class.opacity-60]="estado() === 'cargando'"
+          [attr.aria-busy]="estado() === 'cargando'"
+        >
+          <section aria-label="Resumen" class="grid gap-3 lg:grid-cols-3">
+            <div
+              class="flex items-center justify-between gap-3 rounded-card bg-surface-1 px-3.5 py-3 lg:flex-col lg:items-stretch lg:gap-2 lg:bg-surface-2 lg:px-4.5 lg:py-4"
+            >
+              <div class="flex flex-col lg:contents">
+                <span class="text-small text-muted">Turnos atendidos</span>
+                <span class="text-small text-faint lg:order-last lg:text-muted">
+                  de {{ stats.appointments.total }} asignados
+                </span>
+              </div>
+              <span class="font-mono text-2xl lg:text-[28px] lg:tracking-[-0.5px]">
+                {{ stats.appointments.finished }}
+              </span>
+            </div>
+
+            <div
+              class="flex items-center justify-between gap-3 rounded-card bg-surface-1 px-3.5 py-3 lg:flex-col lg:items-stretch lg:gap-2 lg:bg-surface-2 lg:px-4.5 lg:py-4"
+            >
+              <div class="flex flex-col lg:contents">
+                <span class="text-small text-muted">Horas trabajadas</span>
+                <span class="text-small text-faint lg:order-last lg:text-muted">
+                  {{ promedio() }}
+                </span>
+              </div>
+              <span class="font-mono text-2xl lg:text-[28px] lg:tracking-[-0.5px]">
+                {{ horas() }}
+              </span>
+            </div>
+
+            <div
+              class="flex items-center justify-between gap-3 rounded-card bg-surface-1 px-3.5 py-3 lg:flex-col lg:items-stretch lg:gap-2 lg:bg-surface-2 lg:px-4.5 lg:py-4"
+            >
+              <div class="flex flex-col lg:contents">
+                <span class="text-small text-muted">Ingresos generados</span>
+                @if (comparacion(); as comparacion) {
+                  <span
+                    class="text-small lg:order-last"
+                    [class]="comparacion.sube ? 'text-success' : 'text-danger-fg'"
+                  >
+                    {{ comparacion.texto }}
+                  </span>
+                }
+              </div>
+              <span class="font-mono text-2xl lg:text-[28px] lg:tracking-[-0.5px]">
+                {{ stats.revenueGenerated | monto }}
+              </span>
+            </div>
+          </section>
+
+          <div class="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-4">
+            <section
+              aria-labelledby="por-servicio"
+              class="flex flex-col gap-2.5 rounded-[16px] border border-line bg-surface-1 px-4 py-3.5 lg:gap-4 lg:rounded-card lg:bg-app lg:p-5"
+            >
+              <h2 id="por-servicio" class="font-semibold lg:text-lg">Por servicio</h2>
+              @for (servicio of servicios(); track servicio.serviceName) {
+                <div class="flex flex-col gap-1.5">
+                  <div class="flex justify-between gap-3 text-[13px]">
+                    <span class="min-w-0 truncate">{{ servicio.serviceName }}</span>
+                    <span class="shrink-0 font-mono text-muted">
+                      {{ servicio.appointmentCount }}
+                      {{ servicio.appointmentCount === 1 ? 'turno' : 'turnos' }}
+                    </span>
+                  </div>
+                  <span class="block h-1.5 rounded-full bg-line" aria-hidden="true">
+                    <span
+                      class="block h-1.5 rounded-full bg-accent"
+                      [style.width.%]="servicio.ancho"
+                    ></span>
+                  </span>
+                </div>
+              } @empty {
+                <p class="text-muted">Todavía no atendiste turnos en este período.</p>
+              }
+            </section>
+
+            <section
+              aria-labelledby="tu-agenda"
+              class="hidden flex-col gap-2.5 rounded-card border border-line bg-app p-5 lg:flex"
+            >
+              <h2 id="tu-agenda" class="text-lg font-semibold">Tu agenda</h2>
+              <p class="leading-normal text-muted">
+                Tus días y horarios los arma el dueño del negocio desde sus plantillas. Si necesitás
+                cambiar algo, pedíselo a él.
+              </p>
+              <p class="mt-2 text-small text-faint">
+                Esta vista muestra solo tus números. No ves los de tus compañeros ni la facturación
+                total.
+              </p>
+            </section>
+          </div>
+
+          <p class="text-small leading-normal text-muted lg:hidden">
+            Tus días y horarios los arma el dueño del negocio. Acá ves solo tus números.
+          </p>
+        </div>
+      } @else {
+        <p class="text-muted">Cargando tus números…</p>
+      }
+    }
+  }
+
+  <button
+    type="button"
+    class="flex w-fit items-center gap-2.5 py-2 text-muted hover:text-fg lg:hidden"
+    (click)="cerrarSesion()"
+  >
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+    </svg>
+    Cerrar sesión
+  </button>
+</div>
