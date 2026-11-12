@@ -14,3 +14,8 @@ export interface UserResponse {
   businessId?: string | null;
   businessName?: string | null;
 }
+
+/** Reemplaza todos los roles del usuario. Tiene que tener al menos uno. */
+export interface RoleUpdateRequest {
+  roles: RoleName[];
+}
