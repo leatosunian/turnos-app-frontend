@@ -1,1 +1,342 @@
-<p>admin-usuarios-page works!</p>
+<div class="flex flex-col gap-4">
+  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div class="flex items-end justify-between gap-3">
+      <div class="flex min-w-0 flex-col gap-1">
+        @if (estado() === 'listo') {
+          <span class="text-[13px] text-muted">
+            {{ resumen().total }}<span class="hidden lg:inline"> · {{ resumen().nuevos }}</span>
+          </span>
+        }
+        <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Usuarios</h1>
+      </div>
+      <app-pastilla tono="cielo" class="self-start lg:hidden">Admin</app-pastilla>
+    </div>
+
+    @if (estado() === 'listo') {
+      <label
+        class="flex h-11 items-center gap-2 rounded-control border border-line bg-surface-1 px-3 text-faint focus-within:border-info lg:h-10 lg:w-72 lg:bg-app"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          aria-hidden="true"
+          class="shrink-0"
+        >
+          <circle cx="11" cy="11" r="6" />
+          <path d="M20 20l-4.5-4.5" />
+        </svg>
+        <input
+          type="search"
+          [value]="busqueda()"
+          (input)="buscar($any($event.target).value)"
+          placeholder="Buscar por nombre o email"
+          aria-label="Buscar por nombre o email"
+          class="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-faint"
+        />
+      </label>
+    }
+  </header>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <div aria-busy="true" aria-label="Cargando usuarios" class="flex flex-col gap-2">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="h-14 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold text-danger-fg">No se pudieron cargar los usuarios</span>
+          <span class="text-small text-fg-2">{{ errorCarga() }}</span>
+        </div>
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+    @case ('listo') {
+      <div
+        role="group"
+        aria-label="Filtrar por rol"
+        class="-mx-4.5 flex gap-1.5 overflow-x-auto px-4.5 lg:mx-0 lg:gap-2 lg:px-0"
+      >
+        @for (f of filtros; track f.valor) {
+          <button
+            type="button"
+            [attr.aria-pressed]="filtro() === f.valor"
+            (click)="elegirFiltro(f.valor)"
+            class="h-7.5 shrink-0 rounded-full border px-3 text-[13px] lg:h-8"
+            [class]="
+              filtro() === f.valor
+                ? 'border-info-line bg-info-soft text-info'
+                : 'border-line-strong text-fg-2 hover:text-fg'
+            "
+            [class.font-mono]="f.valor !== 'TODOS' && f.valor !== 'INACTIVOS'"
+          >
+            {{ f.texto }}
+          </button>
+        }
+      </div>
+
+      @if (errorActivo()) {
+        <p
+          role="alert"
+          class="rounded-control border border-danger-line bg-danger-soft px-3 py-2.5 text-small text-danger-fg"
+        >
+          {{ errorActivo() }}
+        </p>
+      }
+
+      <div class="flex gap-4">
+        <div
+          class="flex min-w-0 flex-1 flex-col gap-3 lg:gap-0 lg:rounded-card lg:border lg:border-line lg:bg-app"
+        >
+          @if (visibles().length) {
+            <!-- escritorio: tabla -->
+            <div
+              aria-hidden="true"
+              class="hidden grid-cols-[minmax(0,1fr)_150px_64px_56px_20px] gap-3 border-b border-line px-4 py-2.5 text-label text-faint lg:grid"
+            >
+              <span>Usuario</span><span>Roles</span><span>Alta</span><span>Activo</span
+              ><span></span>
+            </div>
+            <ul class="flex flex-col gap-2 lg:gap-0">
+              @for (usuario of visibles(); track usuario.id) {
+                <li
+                  class="relative flex items-center justify-between gap-3 rounded-card bg-surface-1 px-3.5 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_150px_64px_56px_20px] lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-4 lg:py-2.5 lg:last:border-b-0"
+                  [class.lg:bg-surface-2]="usuario.id === seleccionadoId()"
+                >
+                  <div class="flex min-w-0 flex-col gap-1 lg:gap-0">
+                    <!-- el botón cubre toda la fila; el switch queda por encima -->
+                    <button
+                      type="button"
+                      (click)="seleccionar(usuario)"
+                      [attr.aria-current]="usuario.id === seleccionadoId() ? 'true' : null"
+                      class="truncate text-left font-semibold after:absolute after:inset-0 after:rounded-card lg:after:rounded-none"
+                      [class.text-muted]="!usuario.active"
+                    >
+                      {{ usuario.name }}
+                    </button>
+                    <span class="truncate font-mono text-[11.5px] text-muted">{{
+                      usuario.email
+                    }}</span>
+                    <span class="flex flex-wrap gap-1 lg:hidden">
+                      <ng-container
+                        *ngTemplateOutlet="pastillasRoles; context: { $implicit: usuario }"
+                      />
+                    </span>
+                  </div>
+                  <span class="hidden flex-wrap gap-1 lg:flex">
+                    <ng-container
+                      *ngTemplateOutlet="pastillasRoles; context: { $implicit: usuario }"
+                    />
+                  </span>
+                  <span class="hidden font-mono text-small text-muted lg:block">{{
+                    fechaAlta(usuario)
+                  }}</span>
+                  <app-interruptor
+                    tono="cielo"
+                    [encendido]="usuario.active"
+                    (encendidoChange)="cambiarActivo(usuario, $event)"
+                    [disabled]="!puedeCambiarActivo(usuario)"
+                    [etiqueta]="'Cuenta activa de ' + usuario.name"
+                    class="relative z-10 shrink-0"
+                  />
+                  <span aria-hidden="true" class="hidden text-muted lg:block">›</span>
+                </li>
+              }
+            </ul>
+
+            <nav
+              aria-label="Páginas"
+              class="flex items-center justify-between gap-3 text-small text-muted lg:border-t lg:border-line lg:px-4 lg:py-2.5"
+            >
+              <span class="font-mono">{{ rango() }}</span>
+              @if (totalPaginas() > 1) {
+                <div class="flex items-center gap-1 font-mono">
+                  <button
+                    type="button"
+                    (click)="irAPagina(pagina() - 1)"
+                    [disabled]="pagina() === 0"
+                    aria-label="Página anterior"
+                    class="flex size-8 items-center justify-center rounded-lg hover:bg-surface-2 hover:text-fg disabled:opacity-40"
+                  >
+                    ‹
+                  </button>
+                  @for (numero of paginas(); track $index) {
+                    @if (numero === null) {
+                      <span aria-hidden="true" class="px-1">…</span>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="irAPagina(numero)"
+                        [attr.aria-current]="numero === pagina() ? 'page' : null"
+                        class="hidden size-8 items-center justify-center rounded-lg hover:bg-surface-2 hover:text-fg sm:flex"
+                        [class]="numero === pagina() ? 'bg-surface-3 text-fg' : ''"
+                      >
+                        {{ numero + 1 }}
+                      </button>
+                    }
+                  }
+                  <button
+                    type="button"
+                    (click)="irAPagina(pagina() + 1)"
+                    [disabled]="pagina() === totalPaginas() - 1"
+                    aria-label="Página siguiente"
+                    class="flex size-8 items-center justify-center rounded-lg hover:bg-surface-2 hover:text-fg disabled:opacity-40"
+                  >
+                    ›
+                  </button>
+                </div>
+              }
+            </nav>
+          } @else {
+            <p
+              class="rounded-card border border-dashed border-line-strong px-4 py-10 text-center text-muted lg:m-4"
+            >
+              No hay usuarios que coincidan con la búsqueda.
+            </p>
+          }
+        </div>
+
+        <aside
+          aria-label="Usuario seleccionado"
+          class="hidden w-75 shrink-0 flex-col gap-4 rounded-card border border-line bg-app p-4.5 lg:flex"
+        >
+          <ng-container *ngTemplateOutlet="panel" />
+        </aside>
+      </div>
+    }
+  }
+</div>
+
+<!-- celular: el panel se abre como diálogo -->
+@if (panelCelularAbierto() && seleccionado()) {
+  <div class="fixed inset-0 z-30 flex items-end justify-center bg-app/70 p-2.5 lg:hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Usuario seleccionado"
+      class="flex max-h-full w-full max-w-md flex-col gap-4 overflow-y-auto rounded-container border border-line-strong bg-surface-1 p-5"
+    >
+      <ng-container *ngTemplateOutlet="panel" />
+      <button
+        appBoton
+        variante="secundario"
+        type="button"
+        [disabled]="guardandoRoles()"
+        (click)="cerrarPanelCelular()"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+}
+
+<ng-template #panel>
+  @if (seleccionado(); as usuario) {
+    <span class="text-small text-muted">Usuario seleccionado</span>
+    <div class="flex flex-col gap-0.5">
+      <span class="text-xl font-semibold break-words">{{ usuario.name }}</span>
+      <span class="font-mono text-small break-all text-muted"
+        >{{ usuario.email }} · alta {{ fechaAltaCompleta(usuario) }}</span
+      >
+    </div>
+
+    <div class="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-3">
+      <div class="flex flex-col">
+        <span>Cuenta activa</span>
+        <span class="text-small text-muted">
+          @if (esMiCuenta()) {
+            Es tu cuenta: no podés desactivarla.
+          } @else {
+            Inactiva no puede iniciar sesión
+          }
+        </span>
+      </div>
+      <app-interruptor
+        tono="cielo"
+        [encendido]="usuario.active"
+        (encendidoChange)="cambiarActivo(usuario, $event)"
+        [disabled]="!puedeCambiarActivo(usuario)"
+        etiqueta="Cuenta activa"
+      />
+    </div>
+
+    <fieldset class="flex flex-col gap-1.5">
+      <legend class="pb-2"><app-pastilla tono="cielo">Roles</app-pastilla></legend>
+      @for (r of roles; track r.rol) {
+        <label
+          class="flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 has-disabled:cursor-not-allowed has-disabled:opacity-60"
+          [class]="rolesElegidos().has(r.rol) ? 'border-info-line bg-info-soft' : 'border-line'"
+        >
+          <input
+            type="checkbox"
+            [checked]="rolesElegidos().has(r.rol)"
+            [disabled]="rolBloqueado(r.rol)"
+            (change)="alternarRol(r.rol)"
+            class="size-4 accent-info"
+          />
+          <span
+            class="rounded-md border border-line-strong px-1.5 py-0.5 font-mono text-[10.5px]"
+            >{{ r.rol }}</span
+          >
+          <span class="ml-auto text-small text-muted">{{ r.detalle }}</span>
+        </label>
+      }
+      @if (esMiCuenta()) {
+        <p class="text-small text-muted">No podés sacarte el rol ADMIN a vos mismo.</p>
+      }
+      @if (!rolesElegidos().size) {
+        <p class="text-small text-danger-fg">Tiene que tener al menos un rol.</p>
+      }
+    </fieldset>
+
+    @if (errorRoles()) {
+      <p role="alert" class="text-small text-danger-fg">{{ errorRoles() }}</p>
+    }
+
+    <div class="mt-auto flex flex-col gap-2">
+      <button
+        appBoton
+        type="button"
+        [disabled]="!rolesCambiaron() || !rolesElegidos().size || guardandoRoles()"
+        (click)="guardarRoles()"
+      >
+        {{ guardandoRoles() ? 'Guardando…' : 'Guardar roles' }}
+      </button>
+      <!-- el back todavía no tiene un borrado real: su DELETE sólo activa o desactiva -->
+      <div class="flex items-center gap-2">
+        <button appBoton variante="destructivo" type="button" disabled class="flex-1">
+          Eliminar usuario
+        </button>
+        <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </div>
+      <span class="text-small text-muted">
+        Eliminar va a borrar la cuenta para siempre. Por ahora, si querés frenarla, desactivala.
+      </span>
+    </div>
+  } @else {
+    <p class="my-auto text-center text-small text-muted">
+      Elegí un usuario para ver y cambiar sus roles.
+    </p>
+  }
+</ng-template>
+
+<ng-template #pastillasRoles let-usuario>
+  @for (rol of usuario.roles; track rol) {
+    <span
+      class="rounded-md border px-1.5 py-0.5 font-mono text-[10.5px]"
+      [class]="rol === 'ADMIN' ? 'border-info-line text-info' : 'border-line-strong text-fg-2'"
+      >{{ rol }}</span
+    >
+  }
+</ng-template>
