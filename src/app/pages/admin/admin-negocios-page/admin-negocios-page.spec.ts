@@ -3,7 +3,8 @@ import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse } from '../../../core/models/negocio';
 import { UserResponse } from '../../../core/models/usuario';
-import { AdminService } from '../../../core/services/admin-service';
+import { AdminNegocioService } from '../../../core/services/admin-negocio-service';
+import { AdminUsuarioService } from '../../../core/services/admin-usuario-service';
 import { AdminNegociosPage } from './admin-negocios-page';
 
 function negocio(
@@ -41,7 +42,7 @@ describe('AdminNegociosPage', () => {
   let servicio: {
     negocios: ReturnType<typeof vi.fn<() => Observable<BusinessResponse[]>>>;
     usuarios: ReturnType<typeof vi.fn<() => Observable<UserResponse[]>>>;
-    darDeBajaNegocio: ReturnType<typeof vi.fn<(id: string) => Observable<void>>>;
+    darDeBaja: ReturnType<typeof vi.fn<(id: string) => Observable<void>>>;
   };
 
   const el = () => fixture.nativeElement as HTMLElement;
@@ -85,11 +86,17 @@ describe('AdminNegociosPage', () => {
           usuario('u-3', 'Martín Gómez'),
         ]),
       ),
-      darDeBajaNegocio: vi.fn(),
+      darDeBaja: vi.fn(),
     };
     TestBed.configureTestingModule({
       imports: [AdminNegociosPage],
-      providers: [{ provide: AdminService, useValue: servicio }],
+      providers: [
+        {
+          provide: AdminNegocioService,
+          useValue: { listar: servicio.negocios, darDeBaja: servicio.darDeBaja },
+        },
+        { provide: AdminUsuarioService, useValue: { listar: servicio.usuarios } },
+      ],
     });
   });
 
@@ -150,7 +157,7 @@ describe('AdminNegociosPage', () => {
   });
 
   it('dar de baja pide confirmación y, al confirmar, marca el negocio', async () => {
-    servicio.darDeBajaNegocio.mockReturnValue(of(undefined));
+    servicio.darDeBaja.mockReturnValue(of(undefined));
     await crear();
 
     (
@@ -158,7 +165,7 @@ describe('AdminNegociosPage', () => {
     ).click();
     await refrescar();
     expect(dialogo()!.textContent).toContain('¿Dar de baja Spa Origen?');
-    expect(servicio.darDeBajaNegocio).not.toHaveBeenCalled();
+    expect(servicio.darDeBaja).not.toHaveBeenCalled();
 
     const confirmar = [...dialogo()!.querySelectorAll('button')].find(
       (b) => b.textContent?.trim() === 'Dar de baja',
@@ -166,7 +173,7 @@ describe('AdminNegociosPage', () => {
     confirmar.click();
     await refrescar();
 
-    expect(servicio.darDeBajaNegocio).toHaveBeenCalledWith('2');
+    expect(servicio.darDeBaja).toHaveBeenCalledWith('2');
     expect(dialogo()).toBeNull();
     expect(texto()).toContain('Spa Origen quedó dado de baja.');
     expect(texto()).toContain('3 negocios · 2 de baja');
@@ -174,7 +181,7 @@ describe('AdminNegociosPage', () => {
   });
 
   it('si el back rechaza la baja, el diálogo muestra el motivo', async () => {
-    servicio.darDeBajaNegocio.mockReturnValue(
+    servicio.darDeBaja.mockReturnValue(
       throwError(
         () =>
           ({

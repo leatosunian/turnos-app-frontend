@@ -4,7 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, of } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse } from '../../../core/models/negocio';
-import { AdminService } from '../../../core/services/admin-service';
+import { AdminNegocioService } from '../../../core/services/admin-negocio-service';
+import { AdminUsuarioService } from '../../../core/services/admin-usuario-service';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
 import { Boton } from '../../../shared/components/boton/boton';
 import { Confirmacion } from '../../../shared/components/confirmacion/confirmacion';
@@ -30,7 +31,8 @@ function normalizar(texto: string): string {
   templateUrl: './admin-negocios-page.html',
 })
 export class AdminNegociosPage implements OnInit {
-  private readonly admin = inject(AdminService);
+  private readonly adminNegocios = inject(AdminNegocioService);
+  private readonly adminUsuarios = inject(AdminUsuarioService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly estado = signal<Estado>('cargando');
@@ -106,9 +108,9 @@ export class AdminNegociosPage implements OnInit {
   protected cargar(): void {
     this.estado.set('cargando');
     forkJoin({
-      negocios: this.admin.negocios(),
+      negocios: this.adminNegocios.listar(),
       // sin usuarios la lista se muestra igual, solo sin el nombre del dueño
-      usuarios: this.admin.usuarios().pipe(catchError(() => of([]))),
+      usuarios: this.adminUsuarios.listar().pipe(catchError(() => of([]))),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -158,8 +160,8 @@ export class AdminNegociosPage implements OnInit {
 
     this.procesando.set(true);
     this.errorBaja.set('');
-    this.admin
-      .darDeBajaNegocio(negocio.id)
+    this.adminNegocios
+      .darDeBaja(negocio.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
