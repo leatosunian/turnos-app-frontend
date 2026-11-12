@@ -1,1 +1,341 @@
-<p>hoy-page works!</p>
+<div class="flex flex-col gap-5 lg:gap-5.5">
+  <header class="flex flex-col gap-1">
+    <span class="text-[13px] text-muted">
+      {{ ahora() | fecha }} · <span class="font-mono">{{ ahora() | hora }}</span>
+    </span>
+    <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">
+      @if (estadoTurnos() === 'listo' && estadoNegocio() === 'listo') {
+        Hoy, {{ resumen().ofrecidos }} {{ resumen().ofrecidos === 1 ? 'turno' : 'turnos' }}
+        @if (resumen().libres) {
+          <span class="hidden font-normal text-muted lg:inline">
+            · {{ resumen().libres }} {{ resumen().libres === 1 ? 'libre' : 'libres' }}
+          </span>
+        }
+      } @else {
+        Hoy
+      }
+    </h1>
+  </header>
+
+  @switch (estadoNegocio()) {
+    @case ('cargando') {
+      <div
+        aria-busy="true"
+        aria-label="Cargando el día"
+        class="grid grid-cols-3 gap-2 lg:grid-cols-4 lg:gap-3"
+      >
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div
+            class="h-16 animate-pulse rounded-card bg-surface-2 last:hidden lg:h-28 lg:last:block"
+          ></div>
+        }
+      </div>
+    }
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos vas a ver acá los turnos del día."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col gap-1 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <span class="font-semibold text-danger-fg">No se pudo cargar el día</span>
+        <span class="text-small text-fg-2">{{ errorNegocio() }}</span>
+      </div>
+    }
+    @case ('listo') {
+      <!-- Resumen: 4 tarjetas en escritorio, 3 chicas en el celular -->
+      <section aria-label="Resumen del día" class="grid grid-cols-3 gap-2 lg:grid-cols-4 lg:gap-3">
+        <div
+          class="flex flex-col rounded-xl bg-surface-1 px-3 py-2.5 lg:gap-2 lg:rounded-card lg:bg-surface-2 lg:px-4.5 lg:py-4"
+        >
+          <span class="text-[11px] text-muted lg:text-small">Ocupación</span>
+          <span class="font-mono text-lg tabular-nums lg:text-[28px] lg:leading-9">
+            {{ resumen().ocupacion === null ? '—' : resumen().ocupacion + '%' }}
+          </span>
+          <div class="hidden gap-0.75 lg:flex" aria-hidden="true">
+            @for (lleno of tramosOcupacion(); track $index) {
+              <span
+                class="h-1.5 flex-1 rounded-xs"
+                [class.bg-accent]="lleno"
+                [class.bg-line-strong]="!lleno"
+              ></span>
+            }
+          </div>
+        </div>
+
+        <div
+          class="flex flex-col rounded-xl bg-surface-1 px-3 py-2.5 lg:gap-2 lg:rounded-card lg:bg-surface-2 lg:px-4.5 lg:py-4"
+        >
+          <span class="text-[11px] text-muted lg:text-small">
+            Señas<span class="hidden lg:inline"> cobradas</span>
+          </span>
+          <span class="truncate font-mono text-lg tabular-nums lg:text-[28px] lg:leading-9">
+            {{ stats() ? (stats()!.revenue.depositsCollected | monto) : '—' }}
+          </span>
+          @if (resumen().conSena) {
+            <span class="hidden text-small text-success lg:block">
+              {{ resumen().senasPagadas }} de {{ resumen().conSena }} pagadas
+            </span>
+          }
+        </div>
+
+        <!-- en el celular la tercera tarjeta es Libres, como en la maqueta -->
+        <div class="flex flex-col rounded-xl bg-surface-1 px-3 py-2.5 lg:hidden">
+          <span class="text-[11px] text-muted">Libres</span>
+          <span class="font-mono text-lg tabular-nums">{{ resumen().libres }}</span>
+        </div>
+
+        <div class="hidden flex-col gap-2 rounded-card bg-surface-2 px-4.5 py-4 lg:flex">
+          <span class="text-small text-muted">Ingresos de hoy</span>
+          <span class="font-mono text-[28px] leading-9 tabular-nums">
+            {{ stats() ? (stats()!.revenue.totalFromFinished | monto) : '—' }}
+          </span>
+          <span class="text-small text-muted">De los turnos ya terminados</span>
+        </div>
+
+        <div class="hidden flex-col gap-2 rounded-card bg-surface-2 px-4.5 py-4 lg:flex">
+          <span class="text-small text-muted">Cancelaciones</span>
+          <span class="font-mono text-[28px] leading-9 tabular-nums">
+            {{ stats() ? stats()!.appointments.cancellationRate + '%' : '—' }}
+          </span>
+          @if (stats(); as s) {
+            <span class="text-small text-muted">
+              {{ s.appointments.cancelled }}
+              {{ s.appointments.cancelled === 1 ? 'cancelado' : 'cancelados' }} hoy
+            </span>
+          }
+        </div>
+      </section>
+      @if (estadoStats() === 'error') {
+        <p class="-mt-2 text-small text-muted">
+          No se pudieron cargar las señas, los ingresos y las cancelaciones.
+        </p>
+      }
+
+      @switch (estadoTurnos()) {
+        @case ('cargando') {
+          <div aria-busy="true" aria-label="Cargando turnos" class="flex flex-col gap-1.5">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="h-15 animate-pulse rounded-xl bg-surface-2"></div>
+            }
+          </div>
+        }
+        @case ('error') {
+          <div
+            role="alert"
+            class="flex flex-col gap-2 rounded-card border border-danger-line bg-danger-soft p-4"
+          >
+            <span class="font-semibold text-danger-fg"
+              >No se pudieron cargar los turnos de hoy</span
+            >
+            <span class="text-small text-fg-2">{{ errorTurnos() }}</span>
+            <button
+              appBoton
+              variante="secundario"
+              type="button"
+              (click)="reintentarTurnos()"
+              class="w-fit"
+            >
+              Reintentar
+            </button>
+          </div>
+        }
+        @case ('listo') {
+          @if (!turnos().length) {
+            <app-aviso-vacio
+              titulo="No hay turnos para hoy"
+              detalle="Cuando armes tus horarios, los turnos del día aparecen acá."
+            >
+              <a appBoton variante="secundario" routerLink="/panel/horarios">Ir a Horarios</a>
+            </app-aviso-vacio>
+          } @else {
+            <div class="flex min-h-0 gap-4">
+              <section aria-label="Turnos de hoy" class="flex min-w-0 flex-1 flex-col gap-1">
+                @for (turno of turnos(); track turno.id) {
+                  @if (turno.status === 'UNBOOKED') {
+                    <div
+                      class="grid grid-cols-[52px_1fr_auto] items-center gap-2.5 rounded-xl border border-dashed border-line-strong p-3 text-muted lg:grid-cols-[70px_1fr_auto] lg:gap-3 lg:px-3.5"
+                    >
+                      <span class="font-mono tabular-nums">{{ turno.startDatetime | hora }}</span>
+                      <span class="truncate">Libre · {{ turno.serviceName }}</span>
+                      <span class="flex items-center gap-2 text-small">
+                        <span class="hidden lg:inline">Asignar cliente</span>
+                        <span class="lg:hidden">Asignar</span>
+                        <app-pastilla tono="cielo">Futuro</app-pastilla>
+                      </span>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="elegir(turno)"
+                      [attr.aria-pressed]="seleccionado()?.id === turno.id"
+                      [class.bg-surface-3]="esEnCurso(turno)"
+                      [class.border-accent/40]="esEnCurso(turno)"
+                      [class.border-transparent]="!esEnCurso(turno)"
+                      [class.lg:bg-surface-2]="!esEnCurso(turno) && seleccionado()?.id === turno.id"
+                      [class.text-faint]="terminado(turno)"
+                      class="grid grid-cols-[52px_1fr_auto] items-center gap-2.5 rounded-xl border p-3 text-left hover:bg-surface-2 lg:grid-cols-[70px_1fr_auto] lg:gap-3 lg:px-3.5"
+                    >
+                      <span class="font-mono tabular-nums" [class.text-accent]="esEnCurso(turno)">
+                        {{ turno.startDatetime | hora }}
+                      </span>
+                      <span class="flex min-w-0 flex-col">
+                        <span
+                          class="truncate"
+                          [class.font-semibold]="!terminado(turno)"
+                          [class.line-through]="turno.status === 'CANCELLED'"
+                        >
+                          {{ turno.clientName }}
+                        </span>
+                        <span class="truncate text-small text-muted">
+                          {{ turno.serviceName }} · {{ turno.employeeName ?? 'Sin asignar' }}
+                          <span class="hidden lg:inline">· {{ duracion(turno) }} min</span>
+                        </span>
+                      </span>
+                      <span class="flex items-center gap-2">
+                        @if (esEnCurso(turno)) {
+                          <span class="hidden font-mono text-small text-accent lg:inline">
+                            quedan {{ minutosEnCurso() }} min
+                          </span>
+                        }
+                        <app-estado-turno
+                          [turno]="turno"
+                          [ahora]="ahora()"
+                          class="gap-1.5! px-2.5! py-1! text-[11px]! lg:gap-2! lg:px-3! lg:py-1.5! lg:text-small!"
+                        />
+                      </span>
+                    </button>
+                  }
+                }
+              </section>
+
+              <aside
+                aria-label="Turno seleccionado"
+                class="hidden w-72.5 shrink-0 flex-col gap-3.5 self-start rounded-card border border-line bg-app p-4.5 lg:flex"
+              >
+                @if (seleccionado(); as t) {
+                  <ng-container
+                    [ngTemplateOutlet]="detalle"
+                    [ngTemplateOutletContext]="{ $implicit: t }"
+                  />
+                } @else {
+                  <span class="text-small text-muted">Elegí un turno para ver su detalle.</span>
+                }
+              </aside>
+            </div>
+          }
+        }
+      }
+    }
+  }
+</div>
+
+<!-- Celular: el detalle se abre como hoja desde abajo -->
+@if (hojaAbierta() && seleccionado(); as t) {
+  <div class="fixed inset-0 z-30 flex items-end bg-app/70 lg:hidden" (click)="cerrarHoja()">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Turno seleccionado"
+      (click)="$event.stopPropagation()"
+      class="flex max-h-[85dvh] w-full flex-col gap-3.5 overflow-y-auto rounded-t-[22px] border-t border-line bg-surface-1 px-4.5 pt-3 pb-6"
+    >
+      <button
+        type="button"
+        (click)="cerrarHoja()"
+        aria-label="Cerrar detalle"
+        class="mx-auto h-1.5 w-10 rounded-full bg-line-strong"
+      ></button>
+      <ng-container [ngTemplateOutlet]="detalle" [ngTemplateOutletContext]="{ $implicit: t }" />
+    </div>
+  </div>
+}
+
+<ng-template #detalle let-t>
+  <span class="text-small text-muted">Turno seleccionado</span>
+  <div class="flex flex-col gap-0.5">
+    <span class="text-h2">{{ t.clientName }}</span>
+    @if (t.clientEmail || t.clientPhone) {
+      <span class="text-muted">
+        {{ t.clientEmail }}{{ t.clientEmail && t.clientPhone ? ' · ' : '' }}{{ t.clientPhone }}
+      </span>
+    }
+  </div>
+  <app-estado-turno [turno]="t" [ahora]="ahora()" />
+  <dl class="flex flex-col gap-2 border-t border-line pt-3 text-[13px]">
+    <div class="flex justify-between gap-3">
+      <dt class="text-muted">Horario</dt>
+      <dd class="font-mono">{{ t.startDatetime | hora }}–{{ t.endDatetime | hora }}</dd>
+    </div>
+    <div class="flex justify-between gap-3">
+      <dt class="text-muted">Servicio</dt>
+      <dd class="text-right">{{ t.serviceName }}</dd>
+    </div>
+    <div class="flex justify-between gap-3">
+      <dt class="text-muted">Profesional</dt>
+      <dd class="text-right">{{ t.employeeName ?? 'Sin asignar' }}</dd>
+    </div>
+    <div class="flex justify-between gap-3">
+      <dt class="text-muted">Total</dt>
+      <dd class="font-mono">{{ t.price | monto }}</dd>
+    </div>
+    @if (t.deposit) {
+      <div class="flex justify-between gap-3">
+        <dt class="text-muted">
+          Seña{{ porcentajeSena(t) !== null ? ' ' + porcentajeSena(t) + '%' : '' }}
+        </dt>
+        <dd
+          class="font-mono"
+          [class.text-success]="t.deposit.status === 'PAID'"
+          [class.text-danger-fg]="t.deposit.status === 'PENDING'"
+          [class.text-muted]="t.deposit.status !== 'PAID' && t.deposit.status !== 'PENDING'"
+        >
+          {{ t.deposit.amount | monto }} {{ estadoSena(t) }}
+        </dd>
+      </div>
+    }
+  </dl>
+
+  @if (t.status === 'AWAITING_PAYMENT' || puedeSuspender(t)) {
+    <div class="flex flex-col gap-2 pt-1">
+      @if (t.status === 'AWAITING_PAYMENT') {
+        <button appBoton variante="secundario" type="button" (click)="copiarLinkPago(t)">
+          {{ copia() === 'copiado' ? 'Link copiado' : 'Copiar link de pago' }}
+        </button>
+        <p aria-live="polite" class="text-small text-muted empty:hidden">
+          @if (copia() === 'copiado') {
+            Mandáselo al cliente para que pague la seña.
+          } @else if (copia() === 'fallo') {
+            No se pudo copiar. Probá de nuevo.
+          }
+        </p>
+      }
+      @if (puedeSuspender(t)) {
+        <button appBoton variante="destructivo" type="button" (click)="pedirSuspender(t)">
+          Suspender turno
+        </button>
+      }
+    </div>
+  }
+</ng-template>
+
+@if (suspendiendo(); as t) {
+  <app-confirmacion
+    titulo="¿Suspender este turno?"
+    textoConfirmar="Suspender"
+    textoProcesando="Suspendiendo…"
+    [procesando]="procesando()"
+    [error]="errorAccion()"
+    (confirmado)="confirmarSuspender()"
+    (cancelado)="cancelarSuspender()"
+  >
+    {{ t.clientName }}, hoy a las <span class="font-mono">{{ t.startDatetime | hora }}</span
+    >. Se le devuelve la seña{{ t.deposit ? ' de ' + (t.deposit.amount | monto) : '' }}.
+  </app-confirmacion>
+}

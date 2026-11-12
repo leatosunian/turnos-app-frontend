@@ -62,6 +62,24 @@ describe('AppointmentService', () => {
     expect(total).toBe(11);
   });
 
+  it('pagarSena usa el endpoint de pago', () => {
+    service.pagarSena('t-1').subscribe();
+    const req = httpMock.expectOne(`${URL}/appointments/t-1/pay-deposit`);
+    expect(req.request.method).toBe('POST');
+    req.flush(TURNO);
+  });
+
+  it('deHoy pide los turnos del día', () => {
+    let turnos: AppointmentResponse[] | undefined;
+    service.deHoy('n-1').subscribe((t) => (turnos = t));
+
+    const req = httpMock.expectOne(`${URL}/businesses/n-1/appointments/today`);
+    expect(req.request.method).toBe('GET');
+    req.flush([TURNO]);
+
+    expect(turnos).toEqual([TURNO]);
+  });
+
   it('suspender y eliminar usan su endpoint', () => {
     service.suspender('t-1').subscribe();
     const suspender = httpMock.expectOne(`${URL}/appointments/t-1/suspend`);
@@ -72,5 +90,32 @@ describe('AppointmentService', () => {
     const eliminar = httpMock.expectOne(`${URL}/appointments/t-2`);
     expect(eliminar.request.method).toBe('DELETE');
     eliminar.flush(null);
+  });
+
+  it('libres pide los turnos públicos, filtrando por servicio si se indica', () => {
+    service.libres('n-1').subscribe();
+    const todos = httpMock.expectOne((r) => r.url === `${URL}/businesses/n-1/appointments/public`);
+    expect(todos.request.params.has('serviceId')).toBe(false);
+    todos.flush([]);
+
+    let turnos: AppointmentResponse[] | undefined;
+    service.libres('n-1', 's-1').subscribe((t) => (turnos = t));
+    const filtrados = httpMock.expectOne(
+      (r) => r.url === `${URL}/businesses/n-1/appointments/public`,
+    );
+    expect(filtrados.request.params.get('serviceId')).toBe('s-1');
+    filtrados.flush([TURNO]);
+
+    expect(turnos).toEqual([TURNO]);
+  });
+
+  it('reservar hace POST a book con los datos del cliente', () => {
+    const datos = { clientName: 'Federico Paz', clientEmail: 'fede@mail.com' };
+    service.reservar('t-1', datos).subscribe();
+
+    const req = httpMock.expectOne(`${URL}/appointments/t-1/book`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(datos);
+    req.flush(TURNO);
   });
 });
