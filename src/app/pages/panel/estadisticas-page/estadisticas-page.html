@@ -1,1 +1,372 @@
-<p>estadisticas-page works!</p>
+<div class="flex flex-col gap-4">
+  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div class="flex items-end justify-between gap-3">
+      <div class="flex min-w-0 flex-col gap-1">
+        @if (textoPeriodo()) {
+          <span class="font-mono text-[13px] text-muted">{{ textoPeriodo() }}</span>
+        }
+        <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">
+          Estadísticas
+        </h1>
+      </div>
+      @if (iniciales()) {
+        <span
+          aria-hidden="true"
+          class="flex size-9.5 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-surface-3 text-[13px] font-bold text-accent lg:hidden"
+        >
+          {{ iniciales() }}
+        </span>
+      }
+    </div>
+
+    @if (estadoNegocio() === 'listo') {
+      <div class="flex flex-col gap-2 lg:items-end">
+        <app-segmentado
+          [opciones]="opciones"
+          [valor]="opcion()"
+          (valorChange)="elegirOpcion($event)"
+          etiqueta="Período"
+          class="max-lg:w-full! max-lg:[&>button]:flex-1"
+        />
+        @if (esRango()) {
+          <div class="flex flex-wrap items-center gap-2 text-small text-muted">
+            <label class="flex items-center gap-2">
+              Desde
+              <input
+                type="date"
+                [value]="desde()"
+                [max]="hasta()"
+                (change)="cambiarDesde($any($event.target).value)"
+                class="h-9 rounded-control border border-line bg-app px-2 font-mono text-fg outline-none focus:border-accent"
+              />
+            </label>
+            <label class="flex items-center gap-2">
+              Hasta
+              <input
+                type="date"
+                [value]="hasta()"
+                [min]="desde()"
+                (change)="cambiarHasta($any($event.target).value)"
+                class="h-9 rounded-control border border-line bg-app px-2 font-mono text-fg outline-none focus:border-accent"
+              />
+            </label>
+          </div>
+          @if (errorRango()) {
+            <p role="alert" class="text-small text-danger-fg">{{ errorRango() }}</p>
+          }
+        }
+      </div>
+    }
+  </header>
+
+  @switch (estadoNegocio()) {
+    @case ('cargando') {
+      <ng-container *ngTemplateOutlet="esqueleto" />
+    }
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos y empiecen las reservas vas a ver acá cómo te va."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <ng-container
+        *ngTemplateOutlet="falla; context: { mensaje: errorNegocio(), reintentar: 'negocio' }"
+      />
+    }
+    @case ('listo') {
+      @if (error()) {
+        <ng-container
+          *ngTemplateOutlet="falla; context: { mensaje: error(), reintentar: 'stats' }"
+        />
+      } @else if (!stats()) {
+        <ng-container *ngTemplateOutlet="esqueleto" />
+      } @else if (sinTurnos()) {
+        <app-aviso-vacio
+          titulo="No hubo turnos en este período"
+          detalle="Probá con otro período o con un rango de fechas más amplio."
+        />
+      } @else {
+        @let s = stats()!;
+        <div
+          class="flex flex-col gap-3 transition-opacity"
+          [class.opacity-60]="cargando()"
+          [attr.aria-busy]="cargando()"
+        >
+          <!-- escritorio: seis números -->
+          <section aria-label="Turnos" class="hidden grid-cols-6 gap-2.5 lg:grid">
+            @for (
+              tile of [
+                { etiqueta: 'Turnos', valor: s.appointments.total },
+                { etiqueta: 'Terminados', valor: s.appointments.finished },
+                { etiqueta: 'Próximos', valor: s.appointments.upcoming },
+                { etiqueta: 'Cancelados', valor: s.appointments.cancelled },
+              ];
+              track tile.etiqueta
+            ) {
+              <div class="flex flex-col gap-1 rounded-card bg-surface-2 px-4 py-3.5">
+                <span class="text-small text-muted">{{ tile.etiqueta }}</span>
+                <span class="font-mono text-[26px] leading-8">{{ tile.valor | number }}</span>
+              </div>
+            }
+            <div class="flex flex-col gap-1 rounded-card bg-surface-2 px-4 py-3.5">
+              <span class="text-small text-muted">Ocupación</span>
+              <span class="font-mono text-[26px] leading-8 text-accent"
+                >{{ s.appointments.occupancyRate | number: '1.0-0' }}%</span
+              >
+            </div>
+            <div class="flex flex-col gap-1 rounded-card bg-surface-2 px-4 py-3.5">
+              <span class="text-small text-muted">Clientes únicos</span>
+              <span class="font-mono text-[26px] leading-8">{{
+                s.uniqueClientsCount | number
+              }}</span>
+            </div>
+          </section>
+
+          <!-- celular: cuatro números con su detalle -->
+          <section aria-label="Turnos" class="grid grid-cols-2 gap-2 lg:hidden">
+            <div class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5">
+              <span class="text-small text-muted">Turnos</span>
+              <span class="font-mono text-2xl">{{ s.appointments.total | number }}</span>
+              <span class="text-small text-muted"
+                >{{ s.appointments.finished | number }} terminados</span
+              >
+            </div>
+            <div class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5">
+              <span class="text-small text-muted">Ocupación</span>
+              <span class="font-mono text-2xl text-accent"
+                >{{ s.appointments.occupancyRate | number: '1.0-0' }}%</span
+              >
+              <span class="text-small text-muted"
+                >{{ s.appointments.upcoming | number }} próximos</span
+              >
+            </div>
+            <div class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5">
+              <span class="text-small text-muted">Cancelación</span>
+              <span class="font-mono text-2xl"
+                >{{ s.appointments.cancellationRate | number: '1.0-1' }}%</span
+              >
+              <span class="text-small text-muted"
+                >{{ s.appointments.cancelled | number }} turnos</span
+              >
+            </div>
+            <div class="flex flex-col gap-0.5 rounded-card border border-line bg-surface-1 p-3.5">
+              <span class="text-small text-muted">Clientes únicos</span>
+              <span class="font-mono text-2xl">{{ s.uniqueClientsCount | number }}</span>
+            </div>
+          </section>
+
+          <div class="flex flex-col gap-3 lg:grid lg:grid-cols-[1.3fr_1fr] lg:grid-rows-[auto_1fr]">
+            <section
+              aria-labelledby="titulo-ingresos"
+              class="flex flex-col gap-3 rounded-card border border-line bg-surface-1 p-4 lg:bg-app lg:p-4.5"
+            >
+              <div class="flex flex-col gap-1 lg:flex-row lg:items-baseline lg:justify-between">
+                <h2
+                  id="titulo-ingresos"
+                  class="text-small text-muted lg:text-base lg:font-semibold lg:text-fg"
+                >
+                  Ingresos por turnos terminados
+                </h2>
+                <span class="font-mono text-2xl">{{ s.revenue.totalFromFinished | monto }}</span>
+              </div>
+              <dl
+                class="flex flex-col gap-2 border-t border-line pt-2.5 text-small lg:grid lg:grid-cols-3 lg:gap-2.5"
+              >
+                @for (
+                  sena of [
+                    { etiqueta: 'Señas cobradas', valor: s.revenue.depositsCollected },
+                    { etiqueta: 'Devueltas', valor: s.revenue.depositsRefunded },
+                    { etiqueta: 'Retenidas (<24 h)', valor: s.revenue.depositsForfeited },
+                  ];
+                  track sena.etiqueta
+                ) {
+                  <div class="flex justify-between gap-0.5 lg:flex-col lg:justify-start">
+                    <dt class="text-muted">{{ sena.etiqueta }}</dt>
+                    <dd class="font-mono lg:text-[15px]">{{ sena.valor | monto }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+            <!-- en escritorio servicio y días pico van en la misma tarjeta; en el celular, separados -->
+            <div
+              class="contents lg:row-span-2 lg:flex lg:flex-col lg:gap-3 lg:rounded-card lg:border lg:border-line lg:bg-app lg:p-4.5"
+            >
+              <section
+                aria-labelledby="titulo-servicios"
+                class="order-3 flex flex-col gap-3 rounded-card border border-line bg-surface-1 p-4 lg:order-none lg:border-0 lg:bg-transparent lg:p-0"
+              >
+                <h2 id="titulo-servicios" class="text-base font-semibold">Por servicio</h2>
+                @if (servicios().length) {
+                  <ul class="flex flex-col gap-3">
+                    @for (servicio of servicios(); track servicio.serviceName) {
+                      <li class="flex flex-col gap-1.5">
+                        <div class="flex justify-between gap-3 text-[13px]">
+                          <span class="truncate">{{ servicio.serviceName }}</span>
+                          <span class="shrink-0 font-mono text-fg-2"
+                            >{{ servicio.appointmentCount }} ·
+                            {{ montoCorto(servicio.revenue) }}</span
+                          >
+                        </div>
+                        <div class="h-2 rounded-r bg-surface-2" aria-hidden="true">
+                          <div
+                            class="h-2 rounded-r bg-accent"
+                            [style.width.%]="servicio.ancho"
+                          ></div>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="text-small text-muted">Ningún servicio tuvo turnos terminados.</p>
+                }
+              </section>
+
+              <section
+                aria-labelledby="titulo-dias"
+                class="order-2 flex flex-1 flex-col gap-3 rounded-card border border-line bg-surface-1 p-4 lg:order-none lg:mt-3 lg:border-0 lg:bg-transparent lg:p-0"
+              >
+                <div class="flex items-baseline justify-between">
+                  <h2 id="titulo-dias" class="text-base font-semibold">Días pico</h2>
+                  <span class="text-small text-muted lg:hidden">turnos por día</span>
+                </div>
+                <ul class="grid min-h-28 flex-1 grid-cols-7 items-end gap-2">
+                  @for (dia of dias(); track dia.clave) {
+                    <li
+                      tabindex="0"
+                      [attr.aria-label]="
+                        dia.largo +
+                        ': ' +
+                        dia.cantidad +
+                        (dia.cantidad === 1 ? ' turno' : ' turnos')
+                      "
+                      class="group relative flex h-full flex-col items-center justify-end gap-1.5 rounded-lg outline-offset-2"
+                    >
+                      <span
+                        class="font-mono text-small"
+                        [class]="
+                          dia.pico
+                            ? 'text-fg'
+                            : 'invisible text-fg-2 group-hover:visible group-focus:visible'
+                        "
+                        aria-hidden="true"
+                        >{{ dia.cantidad }}</span
+                      >
+                      <div class="flex w-full max-w-6 flex-1 items-end" aria-hidden="true">
+                        <div
+                          class="w-full rounded-t transition-colors"
+                          [class]="
+                            dia.pico
+                              ? 'bg-accent'
+                              : 'bg-line-strong group-hover:bg-fg-2 group-focus:bg-fg-2'
+                          "
+                          [style.height]="dia.cantidad ? dia.alto + '%' : '2px'"
+                        ></div>
+                      </div>
+                      <span
+                        class="text-[11px]"
+                        [class]="dia.pico ? 'font-semibold text-fg' : 'text-muted'"
+                        aria-hidden="true"
+                        >{{ dia.corto }}</span
+                      >
+                    </li>
+                  }
+                </ul>
+              </section>
+            </div>
+
+            <section
+              aria-labelledby="titulo-profesionales"
+              class="order-4 flex flex-col gap-3 rounded-card border border-line bg-surface-1 p-4 lg:order-none lg:bg-app lg:p-4.5"
+            >
+              <h2 id="titulo-profesionales" class="text-base font-semibold">Por profesional</h2>
+              @if (s.byEmployee.length) {
+                <table class="w-full text-[13px]">
+                  <thead>
+                    <tr class="text-left text-label text-faint">
+                      <th class="pb-1.5 font-medium">Nombre</th>
+                      <th class="pb-1.5 text-right font-medium">Turnos</th>
+                      <th class="pb-1.5 text-right font-medium">Horas</th>
+                      <th class="pb-1.5 text-right font-medium">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (empleado of s.byEmployee; track empleado.employeeId) {
+                      <tr class="border-t border-line">
+                        <td class="max-w-0 truncate py-2 pr-2">{{ empleado.employeeName }}</td>
+                        <td class="py-2 text-right font-mono tabular-nums">
+                          {{ empleado.appointmentCount }}
+                        </td>
+                        <td class="py-2 pl-2 text-right font-mono tabular-nums">
+                          @if (horas(); as h) {
+                            {{
+                              h[empleado.employeeId] === null
+                                ? '—'
+                                : (h[empleado.employeeId] | number: '1.1-1')
+                            }}
+                          } @else {
+                            <span class="text-faint" aria-label="Cargando">…</span>
+                          }
+                        </td>
+                        <td class="py-2 pl-2 text-right font-mono tabular-nums">
+                          {{ empleado.revenue | monto }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else {
+                <p class="text-small text-muted">No hubo turnos asignados a profesionales.</p>
+              }
+              <div
+                class="mt-auto hidden justify-between border-t border-line pt-2.5 text-small text-muted lg:flex"
+              >
+                <span>Tasa de cancelación</span>
+                <span class="font-mono text-fg"
+                  >{{ s.appointments.cancellationRate | number: '1.0-1' }}%</span
+                >
+              </div>
+            </section>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
+
+<ng-template #esqueleto>
+  <div aria-busy="true" aria-label="Cargando estadísticas" class="flex flex-col gap-3">
+    <div class="grid grid-cols-2 gap-2.5 lg:grid-cols-6">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div
+          class="h-20 animate-pulse rounded-card bg-surface-2"
+          [class.max-lg:hidden]="i > 4"
+        ></div>
+      }
+    </div>
+    <div class="h-40 animate-pulse rounded-card bg-surface-2"></div>
+  </div>
+</ng-template>
+
+<ng-template #falla let-mensaje="mensaje" let-reintentar="reintentar">
+  <div
+    role="alert"
+    class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+  >
+    <div class="flex flex-col gap-1">
+      <span class="font-semibold text-danger-fg">No se pudieron cargar las estadísticas</span>
+      <span class="text-small text-fg-2">{{ mensaje }}</span>
+    </div>
+    <button
+      appBoton
+      variante="secundario"
+      type="button"
+      (click)="reintentar === 'negocio' ? cargarNegocio() : pedir()"
+    >
+      Reintentar
+    </button>
+  </div>
+</ng-template>
