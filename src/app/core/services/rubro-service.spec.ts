@@ -37,22 +37,4 @@ describe('RubroService', () => {
     service.eliminar('r-1').subscribe();
     expect(httpMock.expectOne(`${URL}/r-1`).request.method).toBe('DELETE');
   });
-
-  it('cuenta los negocios activos de cada rubro', () => {
-    let cantidades: Map<string, number> | undefined;
-    service.negociosPorRubro().subscribe((c) => (cantidades = c));
-
-    httpMock.expectOne(`${environment.apiUrl}/businesses`).flush([
-      { deleted: false, businessTypes: [{ id: 'a' }, { id: 'b' }] },
-      { deleted: false, businessTypes: [{ id: 'a' }] },
-      { deleted: true, businessTypes: [{ id: 'a' }] },
-    ]);
-
-    expect(cantidades).toEqual(
-      new Map([
-        ['a', 2],
-        ['b', 1],
-      ]),
-    );
-  });
 });

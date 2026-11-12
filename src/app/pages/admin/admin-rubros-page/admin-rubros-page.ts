@@ -1,8 +1,9 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
-import { BusinessTypeResponse } from '../../../core/models/negocio';
+import { BusinessResponse, BusinessTypeResponse } from '../../../core/models/negocio';
+import { AdminNegocioService } from '../../../core/services/admin-negocio-service';
 import { RubroService } from '../../../core/services/rubro-service';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
 import { Boton } from '../../../shared/components/boton/boton';
@@ -10,6 +11,17 @@ import { Campo } from '../../../shared/components/campo/campo';
 import { Confirmacion } from '../../../shared/components/confirmacion/confirmacion';
 
 type Estado = 'cargando' | 'listo' | 'error';
+
+/** Cuántos negocios activos usan cada rubro, por id. El back no lo da, así que se cuenta acá. */
+export function negociosPorRubro(negocios: BusinessResponse[]): Map<string, number> {
+  const cantidades = new Map<string, number>();
+  for (const negocio of negocios.filter((n) => !n.deleted)) {
+    for (const tipo of negocio.businessTypes) {
+      cantidades.set(tipo.id, (cantidades.get(tipo.id) ?? 0) + 1);
+    }
+  }
+  return cantidades;
+}
 
 /** Para comparar nombres sin que importen mayúsculas, tildes ni espacios de más. */
 export function claveRubro(nombre: string): string {
@@ -29,6 +41,7 @@ export function claveRubro(nombre: string): string {
 })
 export class AdminRubrosPage implements OnInit {
   private readonly servicio = inject(RubroService);
+  private readonly adminNegocios = inject(AdminNegocioService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly estado = signal<Estado>('cargando');
@@ -71,7 +84,11 @@ export class AdminRubrosPage implements OnInit {
     this.estado.set('cargando');
     forkJoin({
       rubros: this.servicio.listar(),
-      cantidades: this.servicio.negociosPorRubro().pipe(catchError(() => of(null))),
+      // sin los negocios la lista se muestra igual, solo sin la columna de cantidad
+      cantidades: this.adminNegocios.listar().pipe(
+        map(negociosPorRubro),
+        catchError(() => of(null)),
+      ),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

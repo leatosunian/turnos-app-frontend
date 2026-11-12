@@ -1,9 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
-import { BusinessTypeResponse } from '../../../core/models/negocio';
+import { BusinessResponse, BusinessTypeResponse } from '../../../core/models/negocio';
+import { AdminNegocioService } from '../../../core/services/admin-negocio-service';
 import { RubroService } from '../../../core/services/rubro-service';
-import { AdminRubrosPage, claveRubro } from './admin-rubros-page';
+import { AdminRubrosPage, claveRubro, negociosPorRubro } from './admin-rubros-page';
 
 const rubro = (id: string, name: string): BusinessTypeResponse => ({ id, name, deleted: false });
 
@@ -18,11 +19,27 @@ describe('claveRubro', () => {
   });
 });
 
+// solo lo que usa el conteo
+const negocio = (deleted: boolean, rubros: string[]) =>
+  ({ deleted, businessTypes: rubros.map((id) => ({ id })) }) as BusinessResponse;
+
+describe('negociosPorRubro', () => {
+  it('cuenta los negocios activos de cada rubro', () => {
+    const negocios = [negocio(false, ['a', 'b']), negocio(false, ['a']), negocio(true, ['a'])];
+    expect(negociosPorRubro(negocios)).toEqual(
+      new Map([
+        ['a', 2],
+        ['b', 1],
+      ]),
+    );
+  });
+});
+
 describe('AdminRubrosPage', () => {
   let fixture: ComponentFixture<AdminRubrosPage>;
   let servicio: {
     listar: ReturnType<typeof vi.fn<() => Observable<BusinessTypeResponse[]>>>;
-    negociosPorRubro: ReturnType<typeof vi.fn<() => Observable<Map<string, number>>>>;
+    negocios: ReturnType<typeof vi.fn<() => Observable<BusinessResponse[]>>>;
     crear: ReturnType<typeof vi.fn<(name: string) => Observable<BusinessTypeResponse>>>;
     editar: ReturnType<
       typeof vi.fn<(id: string, name: string) => Observable<BusinessTypeResponse>>
@@ -71,14 +88,19 @@ describe('AdminRubrosPage', () => {
   beforeEach(() => {
     servicio = {
       listar: vi.fn(() => of([TALLER, PELU, BARBERIA])),
-      negociosPorRubro: vi.fn(() => of(new Map([['r-1', 3]]))),
+      negocios: vi.fn(() =>
+        of([negocio(false, ['r-1']), negocio(false, ['r-1']), negocio(false, ['r-1', 'r-2'])]),
+      ),
       crear: vi.fn(),
       editar: vi.fn(),
       eliminar: vi.fn(),
     };
     TestBed.configureTestingModule({
       imports: [AdminRubrosPage],
-      providers: [{ provide: RubroService, useValue: servicio }],
+      providers: [
+        { provide: RubroService, useValue: servicio },
+        { provide: AdminNegocioService, useValue: { listar: servicio.negocios } },
+      ],
     });
   });
 
@@ -92,7 +114,7 @@ describe('AdminRubrosPage', () => {
   });
 
   it('si no se pueden contar los negocios, lista igual', async () => {
-    servicio.negociosPorRubro.mockReturnValue(throwError(() => ({ status: 403 })));
+    servicio.negocios.mockReturnValue(throwError(() => ({ status: 403 })));
     await crearPagina();
 
     expect(nombres()).toHaveLength(3);
