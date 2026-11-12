@@ -12,6 +12,7 @@ import {
   DayScheduleResponse,
   DiaSemana,
 } from '../../../core/models/horario';
+import { BusinessResponse } from '../../../core/models/negocio';
 import { HorariosPage } from './horarios-page';
 
 registerLocaleData(localeEsAr);
@@ -52,6 +53,35 @@ const CORTE_LUNES: AppointmentScheduleResponse = {
   employeeId: 'e-1',
 };
 
+const NEGOCIO: BusinessResponse = {
+  id: 'n-1',
+  name: 'Barberia',
+  email: 'b@b.test',
+  slug: 'barberia',
+  phone: '541145678901',
+  description: null,
+  automaticSchedule: true,
+  scheduleEnd: '2026-11-25T00:00:00',
+  scheduleDaysToCreate: 14,
+  scheduleAnticipation: 5,
+  deleted: false,
+  ownerId: 'u-1',
+  businessTypes: [],
+};
+
+// lo que tiene que mandar el PUT del negocio: todo el negocio salvo id, deleted, ownerId y rubros
+const PEDIDO_NEGOCIO = {
+  name: 'Barberia',
+  email: 'b@b.test',
+  slug: 'barberia',
+  phone: '541145678901',
+  description: undefined,
+  automaticSchedule: true,
+  scheduleEnd: '2026-11-25T00:00:00',
+  scheduleDaysToCreate: 14,
+  scheduleAnticipation: 5,
+};
+
 describe('HorariosPage', () => {
   let fixture: ComponentFixture<HorariosPage>;
   let httpMock: HttpTestingController;
@@ -81,8 +111,8 @@ describe('HorariosPage', () => {
     await fixture.whenStable();
   }
 
-  async function cargar(): Promise<void> {
-    httpMock.expectOne(`${API}/mine`).flush({ id: 'n-1', automaticSchedule: true });
+  async function cargar(automatica = true): Promise<void> {
+    httpMock.expectOne(`${API}/mine`).flush({ ...NEGOCIO, automaticSchedule: automatica });
     httpMock.expectOne(`${API}/n-1/schedule`).flush(SEMANA);
     httpMock.expectOne(`${API}/n-1/appointment-schedules`).flush([CORTE_LUNES]);
     httpMock
@@ -144,5 +174,92 @@ describe('HorariosPage', () => {
     await refrescar();
     expect(el.querySelector('#panel-dia [role=switch]')?.getAttribute('aria-checked')).toBe('true');
     expect(el.querySelector('[aria-live=polite]')?.textContent?.trim()).toBe('Día inválido');
+  });
+
+  describe('agenda automatica', () => {
+    const interruptor = () =>
+      el.querySelector<HTMLButtonElement>('#agenda-automatica [role=switch]')!;
+    const botonGenerar = () =>
+      [...el.querySelectorAll<HTMLButtonElement>('#agenda-automatica button')].find((b) =>
+        b.textContent?.includes('Generar'),
+      )!;
+    const campo = (etiqueta: string) =>
+      [...el.querySelectorAll('#agenda-automatica label')]
+        .find((l) => l.textContent?.includes(etiqueta))!
+        .querySelector('input')!;
+
+    it('apagarla manda el negocio entero con automaticSchedule en false', async () => {
+      await cargar();
+      interruptor().click();
+      await refrescar();
+
+      const req = httpMock.expectOne(`${API}/n-1`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ ...PEDIDO_NEGOCIO, automaticSchedule: false });
+      req.flush({ ...NEGOCIO, automaticSchedule: false });
+      await refrescar();
+      expect(interruptor().getAttribute('aria-checked')).toBe('false');
+      expect(botonGenerar().disabled).toBe(true);
+    });
+
+    it('guarda los dias a crear cuando se deja de escribir', async () => {
+      await cargar();
+      const dias = campo('Días a crear');
+      dias.value = '30';
+      dias.dispatchEvent(new Event('input'));
+      // la espera antes de guardar es de 600 ms
+      await new Promise((listo) => setTimeout(listo, 650));
+      await refrescar();
+
+      const req = httpMock.expectOne(`${API}/n-1`);
+      expect(req.request.body).toEqual({ ...PEDIDO_NEGOCIO, scheduleDaysToCreate: 30 });
+      req.flush({ ...NEGOCIO, scheduleDaysToCreate: 30, scheduleEnd: '2026-12-11T00:00:00' });
+      await refrescar();
+      expect(el.querySelector('#agenda-automatica [aria-live=polite]')?.textContent?.trim()).toBe(
+        'Guardado',
+      );
+    });
+
+    it('si la anticipacion no es menor que los dias, avisa y no guarda', async () => {
+      await cargar();
+      const anticipacion = campo('Anticipación');
+      anticipacion.value = '14';
+      anticipacion.dispatchEvent(new Event('input'));
+      await new Promise((listo) => setTimeout(listo, 650));
+      await refrescar();
+
+      httpMock.expectNone(`${API}/n-1`);
+      expect(el.querySelector('#agenda-automatica')?.textContent).toContain(
+        'Tiene que ser menor que los días a crear.',
+      );
+    });
+
+    it('generar cuenta los turnos libres antes y despues', async () => {
+      await cargar();
+      botonGenerar().click();
+      await refrescar();
+
+      httpMock.expectOne(`${API}/n-1/appointments/public`).flush([{}, {}]);
+      await refrescar();
+      const generar = httpMock.expectOne(`${API}/n-1/appointment-schedules/generate`);
+      expect(generar.request.method).toBe('POST');
+      generar.flush(null);
+      await refrescar();
+      httpMock.expectOne(`${API}/n-1/appointments/public`).flush([{}, {}, {}]);
+      httpMock.expectOne(`${API}/mine`).flush({ ...NEGOCIO, scheduleEnd: '2026-11-26T00:00:00' });
+      await refrescar();
+
+      expect(el.querySelector('#agenda-automatica [role=status]')?.textContent?.trim()).toBe(
+        'Listo, quedaron 3 turnos libres publicados hasta el 26/11 (antes había 2).',
+      );
+    });
+
+    it('con la agenda apagada no deja generar', async () => {
+      await cargar(false);
+      expect(botonGenerar().disabled).toBe(true);
+      expect(el.querySelector('#agenda-automatica [role=status]')?.textContent?.trim()).toBe(
+        'Prendé la agenda automática para generar turnos.',
+      );
+    });
   });
 });

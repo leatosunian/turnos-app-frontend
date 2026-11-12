@@ -71,7 +71,14 @@
         <p class="rounded-card border border-accent-line bg-accent-soft px-3.5 py-2.5 text-fg-2">
           Esta es tu <span class="font-semibold text-fg">plantilla semanal</span>: los turnos se
           publican en tu página solo con la
-          <span class="font-semibold text-fg">agenda automática</span> prendida.
+          <button
+            type="button"
+            (click)="irAAgenda()"
+            class="font-semibold text-fg underline decoration-accent underline-offset-2 hover:text-accent"
+          >
+            agenda automática
+          </button>
+          prendida.
           @if (negocio()?.automaticSchedule) {
             Ahora está prendida, así que cada cambio actualiza tus turnos libres.
           } @else {
@@ -322,6 +329,146 @@
           </div>
         }
       </section>
+
+      @if (negocio(); as n) {
+        <!-- el pb-16 del celular es para que el boton flotante "+" del layout no tape el texto
+             de abajo de todo -->
+        <section
+          id="agenda-automatica"
+          aria-labelledby="titulo-agenda"
+          class="flex scroll-mt-4 flex-col gap-4 pb-16 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:p-5"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <div class="flex max-w-xl flex-col gap-1">
+              <h2 id="titulo-agenda" class="text-lg font-semibold">Agenda automática</h2>
+              <p class="text-fg-2">
+                Publica los turnos de tu plantilla en tu página. Todas las madrugadas revisa cuántos
+                días quedan cargados y, cuando quedan pocos, suma los que siguen.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-small text-fg-2">
+              <app-interruptor
+                [encendido]="n.automaticSchedule"
+                (encendidoChange)="cambiarAutomatica($event)"
+                etiqueta="Agenda automática"
+              />
+              {{ n.automaticSchedule ? 'Prendida' : 'Apagada' }}
+            </label>
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-2">
+            <!-- frecuencia y cantidad de días -->
+            <div class="flex flex-col gap-3 rounded-card border border-line bg-app p-3.5">
+              <span class="font-semibold">Frecuencia y cantidad de días</span>
+              <div class="grid grid-cols-2 gap-3">
+                <app-campo etiqueta="Días a crear" [error]="erroresAgenda().dias">
+                  <input
+                    type="number"
+                    inputmode="numeric"
+                    [min]="limitesDias.min"
+                    [max]="limitesDias.max"
+                    [value]="borradorDias()"
+                    (input)="escribirDias($any($event.target).value)"
+                    class="font-mono"
+                  />
+                </app-campo>
+                <app-campo etiqueta="Anticipación (días)" [error]="erroresAgenda().anticipacion">
+                  <input
+                    type="number"
+                    inputmode="numeric"
+                    [min]="limitesAnticipacion.min"
+                    [max]="limitesAnticipacion.max"
+                    [value]="borradorAnticipacion()"
+                    (input)="escribirAnticipacion($any($event.target).value)"
+                    class="font-mono"
+                  />
+                </app-campo>
+              </div>
+              <p class="text-small text-muted">
+                Se publican {{ n.scheduleDaysToCreate }} días de turnos desde hoy y, cuando quedan
+                {{ n.scheduleAnticipation }} o menos, se suman otros {{ n.scheduleDaysToCreate }}.
+              </p>
+              <span aria-live="polite" class="min-h-5 text-small">
+                @switch (guardadoAgenda()) {
+                  @case ('guardando') {
+                    <span class="text-muted">Guardando…</span>
+                  }
+                  @case ('guardado') {
+                    <span class="text-success">Guardado</span>
+                  }
+                  @case ('error') {
+                    <span class="text-danger-fg">{{ errorAgenda() }}</span>
+                  }
+                }
+              </span>
+            </div>
+
+            <!-- resumen -->
+            <dl
+              class="grid grid-cols-2 content-start gap-x-4 gap-y-3 rounded-card border border-line bg-app p-3.5"
+            >
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Estado</dt>
+                <dd class="flex items-center gap-1.5 font-medium">
+                  <span
+                    aria-hidden="true"
+                    class="size-2 rounded-full"
+                    [class]="n.automaticSchedule ? 'bg-success' : 'bg-idle'"
+                  ></span>
+                  {{ n.automaticSchedule ? 'Prendida' : 'Apagada' }}
+                </dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Turnos por semana</dt>
+                <dd class="font-mono font-medium">{{ turnosSemana() }}</dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Cargada hasta</dt>
+                <dd class="font-medium">
+                  @if (n.scheduleEnd) {
+                    {{ n.scheduleEnd | fecha }}
+                  } @else {
+                    Sin turnos generados
+                  }
+                </dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Próxima renovación</dt>
+                <dd class="font-medium">
+                  @if (renovacion(); as r) {
+                    {{ r | fecha }} a las 02:00
+                  } @else {
+                    No hay
+                  }
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <button
+              appBoton
+              type="button"
+              [disabled]="!n.automaticSchedule || generando() || guardadoAgenda() === 'guardando'"
+              (click)="generar()"
+            >
+              {{ generando() ? 'Generando…' : 'Generar turnos ahora' }}
+            </button>
+            <span role="status" class="text-small">
+              @if (resultadoGenerar(); as r) {
+                <span [class]="r.ok ? 'text-success' : 'text-danger-fg'">{{ r.texto }}</span>
+              } @else if (!n.automaticSchedule) {
+                <span class="text-muted">Prendé la agenda automática para generar turnos.</span>
+              } @else {
+                <span class="text-muted">
+                  Borra los turnos libres que vienen y los vuelve a crear con la plantilla. Los
+                  reservados no se tocan.
+                </span>
+              }
+            </span>
+          </div>
+        </section>
+      }
     }
   }
 </div>
