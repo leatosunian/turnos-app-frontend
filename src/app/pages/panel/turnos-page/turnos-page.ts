@@ -13,12 +13,17 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Observable, Subscription, catchError, forkJoin, map, of } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
-import { AppointmentResponse, AppointmentStatus } from '../../../core/models/turno';
+import {
+  AppointmentResponse,
+  AppointmentStatus,
+  sePuedeSuspender,
+} from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { NegocioService } from '../../../core/services/negocio-service';
 import { MenuMasEstado } from '../../../layouts/private-layout/menu-mas/menu-mas-estado';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
 import { Boton } from '../../../shared/components/boton/boton';
+import { Confirmacion } from '../../../shared/components/confirmacion/confirmacion';
 import { EstadoTurno } from '../../../shared/components/estado-turno/estado-turno';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { FechaPipe } from '../../../shared/pipes/fecha-pipe';
@@ -67,6 +72,7 @@ type ClaveFiltro = AppointmentStatus | 'todos';
     RouterLink,
     AvisoVacio,
     Boton,
+    Confirmacion,
     EstadoTurno,
     Pastilla,
     FechaPipe,
@@ -176,12 +182,8 @@ export class TurnosPage implements OnInit {
     this.irAPagina(this.primeraPagina());
   }
 
-  /**
-   * Solo reservados que todavía no terminaron (Confirmado o En curso). El back deja suspender
-   * cualquier BOOKED, pero en uno ya terminado le devolvería la seña al cliente.
-   */
   protected puedeSuspender(turno: AppointmentResponse): boolean {
-    return turno.status === 'BOOKED' && Date.now() < new Date(turno.endDatetime).getTime();
+    return sePuedeSuspender(turno);
   }
 
   protected puedeEliminar(turno: AppointmentResponse): boolean {
@@ -213,9 +215,9 @@ export class TurnosPage implements OnInit {
     this.accion.set(null);
   }
 
+  // El diálogo de confirmación maneja su propio Escape.
   protected alEscape(): void {
     this.cerrarMenu();
-    this.cancelarAccion();
   }
 
   protected confirmarAccion(): void {

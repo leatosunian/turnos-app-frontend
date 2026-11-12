@@ -19,3 +19,16 @@ export interface BusinessResponse {
   ownerId: string;
   businessTypes: BusinessTypeResponse[];
 }
+
+export interface BusinessRequest {
+  name: string;
+  email: string;
+  slug: string;
+  /** Entre 7 y 15 dígitos, sin espacios ni '+'. */
+  phone: string;
+  description?: string;
+  automaticSchedule?: boolean;
+  scheduleEnd?: string | null;
+  scheduleDaysToCreate?: number;
+  scheduleAnticipation?: number;
+}
