@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { ActivatedRoute, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
 import { Sidebar } from './sidebar/sidebar';
 import { BarraInferior } from './barra-inferior/barra-inferior';
 import { MenuMas } from './menu-mas/menu-mas';
 import { MenuMasEstado } from './menu-mas/menu-mas-estado';
 
 @Component({
-  imports: [RouterOutlet, Sidebar, BarraInferior, MenuMas],
+  imports: [RouterLink, RouterOutlet, Sidebar, BarraInferior, MenuMas],
   selector: 'app-private-layout',
   styleUrl: './private-layout.css',
   templateUrl: './private-layout.html',

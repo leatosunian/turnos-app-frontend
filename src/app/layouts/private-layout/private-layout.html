@@ -15,8 +15,8 @@
   }
 
   @if (!admin && !masAbierto()) {
-    <button
-      type="button"
+    <a
+      routerLink="/panel/turnos"
       aria-label="Nuevo turno"
       class="fixed right-4.5 bottom-23 z-20 flex size-14 items-center justify-center rounded-2xl bg-accent text-on-accent hover:bg-accent-hover lg:hidden"
     >
@@ -32,7 +32,7 @@
       >
         <path d="M12 5v14M5 12h14" />
       </svg>
-    </button>
+    </a>
   }
 
   <app-barra-inferior
