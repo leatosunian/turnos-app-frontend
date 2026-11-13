@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { accesosDeSesion } from '../accesos';
 
 interface ColumnaFooter {
   titulo: string;
@@ -15,8 +16,12 @@ interface ColumnaFooter {
 export class Footer {
   protected readonly anio = new Date().getFullYear();
 
-  // las anclas apuntan a las secciones de la landing (TA-14)
-  protected readonly columnas: ColumnaFooter[] = [
+  private readonly accesos = accesosDeSesion();
+
+  // Las anclas apuntan a las secciones de la landing (TA-14). Es computed porque la columna
+  // Clientes cambia con la sesion: Ingresar lleva a la pantalla del rol si ya hay sesion, y
+  // Mis turnos solo aparece sin sesion o para clientes (ver accesos.ts).
+  protected readonly columnas = computed<ColumnaFooter[]>(() => [
     {
       titulo: 'Producto',
       links: [
@@ -28,8 +33,8 @@ export class Footer {
     {
       titulo: 'Clientes',
       links: [
-        { texto: 'Mis turnos', ruta: '/mis-turnos' },
-        { texto: 'Ingresar', ruta: '/ingresar' },
+        ...(this.accesos.veMisTurnos() ? [{ texto: 'Mis turnos', ruta: '/mis-turnos' }] : []),
+        { texto: 'Ingresar', ruta: this.accesos.rutaIngresar() },
       ],
     },
     {
@@ -42,5 +47,5 @@ export class Footer {
         },
       ],
     },
-  ];
+  ]);
 }

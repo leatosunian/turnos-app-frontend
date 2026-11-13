@@ -1,10 +1,23 @@
-<header class="border-b border-line">
+<!-- Fondo semitransparente con desenfoque: lo que pasa por debajo al scrollear se ve borroso.
+     El sticky lo lleva el host (ver header.ts), porque si lo tuviera este header no se pegaria:
+     su contenedor seria app-header, que mide lo mismo que el y no deja lugar para moverse. -->
+<header class="relative border-b border-line/70 bg-app/65 backdrop-blur-xl backdrop-saturate-150">
   <nav
     aria-label="Principal"
-    class="mx-auto flex h-15 max-w-360 items-center gap-5 px-5 lg:h-16 lg:px-20"
+    class="contenedor flex h-15 items-center gap-5 lg:h-18 lg:gap-6 xl:gap-10"
   >
-    <a routerLink="/" class="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
-      <svg width="22" height="22" viewBox="0 0 26 26" class="shrink-0 text-accent" aria-hidden="true">
+    <a
+      routerLink="/"
+      (click)="cerrarMenu()"
+      class="flex items-center gap-2.5 text-[17px] font-bold tracking-tight lg:text-[19px]"
+    >
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 26 26"
+        class="shrink-0 text-accent"
+        aria-hidden="true"
+      >
         <rect
           x="1"
           y="1"
@@ -20,18 +33,105 @@
       TurnosApp
     </a>
 
+    <div class="hidden items-center gap-6 text-fg-2 lg:flex xl:gap-10">
+      @for (seccion of secciones; track seccion.ancla) {
+        <a routerLink="/" [fragment]="seccion.ancla" class="hover:text-accent">
+          {{ seccion.texto }}
+        </a>
+      }
+      <!-- todavia no hay buscador de negocios en el back, por eso va apagado con la etiqueta Futuro -->
+      <span aria-disabled="true" class="flex cursor-not-allowed items-center gap-2 text-muted">
+        Buscar negocio <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </span>
+    </div>
+
     <div class="ml-auto flex items-center gap-5 text-fg-2">
-      <a routerLink="/mis-turnos" routerLinkActive="text-fg" class="hover:text-accent">
-        Mis turnos
+      @if (accesos.veMisTurnos()) {
+        <a
+          routerLink="/mis-turnos"
+          routerLinkActive="text-fg"
+          class="hidden hover:text-accent xl:block"
+        >
+          Mis turnos
+        </a>
+      }
+      <a [routerLink]="accesos.rutaIngresar()" routerLinkActive="text-fg" class="hover:text-accent">
+        Ingresar
       </a>
-      <a routerLink="/ingresar" routerLinkActive="text-fg" class="hover:text-accent">Ingresar</a>
       <a
         routerLink="/ingresar"
         [queryParams]="{ modo: 'crear' }"
-        class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover sm:flex"
+        class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover lg:flex"
+      >
+        Crear mi negocio
+      </a>
+      <button
+        type="button"
+        class="flex size-10 items-center justify-center rounded-control border border-line-strong bg-surface-1 text-fg lg:hidden"
+        [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+        [attr.aria-expanded]="menuAbierto()"
+        aria-controls="menu-publico"
+        (click)="alternarMenu()"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          @if (menuAbierto()) {
+            <path d="M6 6l12 12M18 6L6 18" />
+          } @else {
+            <path d="M4 8h16M4 16h16" />
+          }
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- menu del celular: se despliega debajo del header y tapa el contenido, no lo empuja -->
+  @if (menuAbierto()) {
+    <div
+      id="menu-publico"
+      class="absolute inset-x-0 top-full z-20 border-b border-line-strong bg-surface-1 px-5 pt-2 pb-5 lg:hidden"
+    >
+      @for (seccion of secciones; track seccion.ancla) {
+        <a
+          routerLink="/"
+          [fragment]="seccion.ancla"
+          (click)="cerrarMenu()"
+          class="block border-b border-line py-3.5 text-fg-2 hover:text-accent"
+        >
+          {{ seccion.texto }}
+        </a>
+      }
+      <span
+        aria-disabled="true"
+        class="flex items-center gap-2 border-b border-line py-3.5 text-muted"
+      >
+        Buscar negocio <app-pastilla tono="cielo">Futuro</app-pastilla>
+      </span>
+      @if (accesos.veMisTurnos()) {
+        <a
+          routerLink="/mis-turnos"
+          (click)="cerrarMenu()"
+          class="block py-3.5 text-fg-2 hover:text-accent"
+        >
+          ¿Sos cliente? Consultá tus turnos
+        </a>
+      }
+      <a
+        routerLink="/ingresar"
+        [queryParams]="{ modo: 'crear' }"
+        (click)="cerrarMenu()"
+        class="mt-2 flex h-12 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
       >
         Crear mi negocio
       </a>
     </div>
-  </nav>
+  }
 </header>
