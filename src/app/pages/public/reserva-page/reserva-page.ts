@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
-import { MINUTOS_PARA_PAGAR, leerReserva } from '../../../core/models/reserva';
+import { senaDeLaReserva } from '../../../core/models/reserva';
 import { AppointmentResponse } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { AuthService } from '../../../core/services/auth-service';
@@ -13,10 +13,34 @@ import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { FechaPipe } from '../../../shared/pipes/fecha-pipe';
 import { HoraPipe } from '../../../shared/pipes/hora-pipe';
 import { MontoPipe } from '../../../shared/pipes/monto-pipe';
+import { NoEncontradoPage } from '../no-encontrado-page/no-encontrado-page';
 
-/** Pago de la seña de un turno recién reservado. Se entra desde la página del negocio. */
+type Carga = 'cargando' | 'listo' | 'error' | 'no-encontrado';
+
+/**
+ * Qué se muestra según el turno que devuelve el back:
+ * - pagar: espera la seña (AWAITING_PAYMENT).
+ * - confirmado: ya está BOOKED (pagó, o el servicio no pide seña y se confirmó al reservar).
+ * - inactiva: venció, se canceló o la suspendió el negocio, o el horario ya lo tomó otra persona.
+ */
+type Vista = 'pagar' | 'confirmado' | 'inactiva';
+
+/**
+ * Pago de la seña de un turno reservado. Se llega después de reservar en la página del negocio,
+ * desde "Pagar seña" en Mis turnos o con el link que el dueño copia en el Panel Hoy.
+ * Todo lo que se muestra sale del back (GET /appointments/{id}), no de lo que llega al navegar.
+ */
 @Component({
-  imports: [NgTemplateOutlet, RouterLink, Boton, Pastilla, FechaPipe, HoraPipe, MontoPipe],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    Boton,
+    Pastilla,
+    FechaPipe,
+    HoraPipe,
+    MontoPipe,
+    NoEncontradoPage,
+  ],
   selector: 'app-reserva-page',
   styleUrl: './reserva-page.css',
   templateUrl: './reserva-page.html',
@@ -27,34 +51,67 @@ export class ReservaPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly historial = inject(DOCUMENT).defaultView?.history;
-
   protected readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
-  /** null si se entró por link (sin pasar por la reserva): el back no deja traer el turno. */
-  protected readonly reserva = leerReserva(this.historial?.state, this.id);
+  /** La seña de la reserva que hizo esta persona, si llegó reservando (ver senaDeLaReserva). */
+  private readonly senaPropia = senaDeLaReserva(
+    inject(DOCUMENT).defaultView?.history.state,
+    this.id,
+  );
 
+  protected readonly carga = signal<Carga>('cargando');
+  protected readonly turno = signal<AppointmentResponse | null>(null);
   protected readonly ahora = signal(Date.now());
   protected readonly pagando = signal(false);
   protected readonly error = signal('');
-  // Turno ya pagado, para la confirmacion de quien reservo sin sesion.
-  // Si el turno que viene en el state ya esta pago (BOOKED) arrancamos directo en la confirmacion.
-  // Eso pasa cuando el cliente paga y despues recarga la pagina (ver guardarPago mas abajo)
-  protected readonly confirmado = signal<AppointmentResponse | null>(
-    this.reserva?.turno.status === 'BOOKED' ? this.reserva.turno : null,
-  );
 
-  protected readonly turno = this.reserva?.turno ?? null;
-  protected readonly sena = this.turno?.deposit?.amount ?? null;
-  protected readonly enElLocal =
-    this.turno && this.sena !== null ? Number(this.turno.price) - Number(this.sena) : null;
-  protected readonly iniciales = iniciales(this.reserva?.negocio.name ?? '');
-  protected readonly volverA = this.reserva ? `/${this.reserva.negocio.slug}` : '/';
+  protected readonly vista = computed<Vista | null>(() => {
+    const turno = this.turno();
+    if (!turno) return null;
+    // el horario lo volvió a reservar otra persona después de que venció esta reserva
+    const deOtro = this.senaPropia !== null && turno.deposit?.id !== this.senaPropia;
+    if (deOtro) return 'inactiva';
+    if (turno.status === 'AWAITING_PAYMENT') return 'pagar';
+    if (turno.status === 'BOOKED') return 'confirmado';
+    return 'inactiva';
+  });
 
-  /** Milisegundos que quedan para pagar antes de que el back libere el turno. */
+  protected readonly sena = computed(() => {
+    const monto = this.turno()?.deposit?.amount;
+    return monto === undefined || monto === null ? null : Number(monto);
+  });
+  protected readonly enElLocal = computed(() => {
+    const turno = this.turno();
+    const sena = this.sena();
+    return turno && sena !== null ? Number(turno.price) - sena : null;
+  });
+  protected readonly negocio = computed(() => this.turno()?.businessName ?? null);
+  protected readonly iniciales = computed(() => iniciales(this.negocio() ?? ''));
+  protected readonly volverA = computed(() => {
+    const slug = this.turno()?.businessSlug;
+    return slug ? `/${slug}` : '/';
+  });
+  protected readonly esCliente = computed(() => this.auth.tieneRol(['CLIENT']));
+
+  /** Por qué la reserva ya no se puede pagar. */
+  protected readonly motivoInactiva = computed(() => {
+    const turno = this.turno();
+    if (!turno || this.vista() !== 'inactiva') return '';
+    if (turno.status === 'CANCELLED') return 'Esta reserva se canceló.';
+    if (turno.status === 'SUSPENDED') {
+      return 'El negocio suspendió este turno. Si pagaste la seña, te la devolvemos.';
+    }
+    return 'Se venció el tiempo para pagar y el horario se liberó.';
+  });
+
+  /**
+   * Milisegundos que quedan para pagar. Sale de expiresAt, que es la hora del servidor; se compara
+   * con la de la PC porque el back no expone su hora. null si no hay vencimiento.
+   */
   protected readonly restante = computed(() => {
-    if (!this.reserva) return null;
-    const vence = new Date(this.reserva.reservadaEn).getTime() + MINUTOS_PARA_PAGAR * 60_000;
-    return Math.max(0, vence - this.ahora());
+    const vence = this.turno()?.expiresAt;
+    if (this.vista() !== 'pagar' || !vence) return null;
+    const ms = new Date(vence).getTime();
+    return Number.isNaN(ms) ? null : Math.max(0, ms - this.ahora());
   });
   protected readonly vencida = computed(() => this.restante() === 0);
   /** mm:ss */
@@ -66,16 +123,29 @@ export class ReservaPage {
   });
 
   constructor() {
-    // el reloj de los 30 minutos solo hace falta mientras el turno espera el pago
-    if (this.reserva && !this.confirmado()) {
-      interval(1000)
-        .pipe(takeUntilDestroyed())
-        .subscribe(() => this.ahora.set(Date.now()));
-    }
+    this.cargar();
+    interval(1000)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.ahora.set(Date.now()));
+  }
+
+  protected cargar(): void {
+    this.carga.set('cargando');
+    this.turnos
+      .porId(this.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (turno) => {
+          this.turno.set(turno);
+          this.carga.set('listo');
+        },
+        error: (error: ApiError) =>
+          this.carga.set(error.status === 404 || error.status === 400 ? 'no-encontrado' : 'error'),
+      });
   }
 
   protected pagar(): void {
-    if (this.pagando() || this.vencida()) return;
+    if (this.pagando() || this.vencida() || this.vista() !== 'pagar') return;
     this.pagando.set(true);
     this.error.set('');
     this.turnos
@@ -86,38 +156,32 @@ export class ReservaPage {
         // pide el ticket. Sin sesión, Mis turnos no le mostraría este turno (el back los busca por
         // usuario), así que se queda acá con la confirmación.
         next: (turno) => {
-          this.guardarPago(turno);
-          if (this.auth.tieneRol(['CLIENT'])) {
+          if (this.esCliente()) {
             this.router.navigateByUrl('/mis-turnos');
-          } else {
-            this.pagando.set(false);
-            this.confirmado.set(turno);
+            return;
           }
+          this.pagando.set(false);
+          this.turno.set(turno);
         },
+        // Puede que la reserva haya vencido o cambiado mientras tanto (por ejemplo, se pagó desde
+        // otra pestaña): el back responde 400 "el turno no está esperando un pago". Con cualquier
+        // 4xx se vuelve a pedir el turno para que la pantalla quede como está en el back.
         error: (error: ApiError) => {
           this.pagando.set(false);
           this.error.set(error.message);
+          if (error.status >= 400 && error.status < 500) this.cargar();
         },
       });
   }
-
-  // El navegador guarda el state de la navegacion y lo vuelve a dar cuando se recarga la pagina.
-  // Ahi viene el turno como estaba al reservarlo, esperando la seña. Si no lo pisamos con el
-  // turno pago, al recargar se vuelve a mostrar el boton de pagar y el back contesta que el
-  // turno no esta esperando un pago.
-  // Copiamos el state entero y solo cambiamos el turno, porque el router de Angular guarda ahi
-  // su propio dato (navigationId) y no hay que perderlo. replaceState sin url deja la misma url.
-  private guardarPago(turno: AppointmentResponse): void {
-    if (!this.historial || !this.reserva) return;
-    this.historial.replaceState({ ...this.historial.state, turno }, '');
-  }
 }
 
+/** Primera letra de las dos primeras palabras. Solo letras: "Estudio <b>" da "E", no "E<". */
 function iniciales(nombre: string): string {
   return nombre
     .split(/\s+/)
+    .map((palabra) => palabra.match(/\p{L}/u)?.[0] ?? '')
     .filter(Boolean)
     .slice(0, 2)
-    .map((palabra) => palabra[0].toUpperCase())
-    .join('');
+    .join('')
+    .toUpperCase();
 }

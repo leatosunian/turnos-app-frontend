@@ -146,6 +146,21 @@ describe('NegocioPage', () => {
     expect(sena()).toBe('Seña del 50% · $2.750');
   });
 
+  it('un servicio con seña del 0 % no habla de pagar', async () => {
+    const sinSena: ServResponse = { ...CORTE, depositPorcentage: 0 };
+    httpMock.expectOne(`${API}/businesses/slug/estudio-malbec`).flush(NEGOCIO);
+    httpMock.expectOne(`${API}/businesses/n-1/services`).flush([sinSena]);
+    await refrescar();
+    httpMock.expectOne((r) => r.params.get('serviceId') === 's-1').flush(LIBRES);
+    await refrescar();
+
+    const texto = el().textContent!.replace(/\s+/g, ' ');
+    expect(el().querySelector('header li')?.textContent?.trim()).toBe('Sin seña');
+    expect(texto).not.toContain('Reservar y pagar seña');
+    expect(texto).not.toContain('Tenés 30 minutos');
+    expect(texto).toContain('el turno queda confirmado al reservar');
+  });
+
   it('elige el primer día con horarios libres y los separa en mañana y tarde', async () => {
     await cargar();
     const texto = el().textContent!;

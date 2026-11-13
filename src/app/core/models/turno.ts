@@ -34,6 +34,11 @@ export interface AppointmentResponse {
   employeeName: string | null;
   createdAt: string;
   deposit: DepositResponse | null;
+  /**
+   * Hasta cuándo se guarda la reserva sin pagar (la hora de la reserva + 30 min, hora del
+   * servidor, sin zona). Solo viene en AWAITING_PAYMENT; en los demás estados es null.
+   */
+  expiresAt?: string | null;
 }
 
 /**

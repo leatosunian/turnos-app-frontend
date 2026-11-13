@@ -130,12 +130,15 @@ export function separarPorTurno(turnos: AppointmentResponse[]): {
 }
 
 // Porcentaje de seña de un servicio. Cada servicio tiene el suyo. Hace lo mismo que el back:
-// si esta entre 1 y 100 usa ese, si no cobra el 30%.
+// si esta entre 0 y 100 usa ese, si falta o se pasa de rango cobra el 30%. El 0 es una
+// eleccion del negocio (sin seña): el turno se confirma al reservar, sin pasar por el pago.
 // Recibe cualquier objeto que tenga depositPorcentage, asi en los tests alcanza con pasarle
 // { depositPorcentage: 50 } sin armar un servicio entero.
 export function porcentajeSena(servicio: Pick<ServResponse, 'depositPorcentage'>): number {
   const porcentaje = servicio.depositPorcentage;
-  return porcentaje > 0 && porcentaje <= 100 ? porcentaje : SENA_POR_DEFECTO;
+  return typeof porcentaje === 'number' && porcentaje >= 0 && porcentaje <= 100
+    ? porcentaje
+    : SENA_POR_DEFECTO;
 }
 
 // Cuanta plata hay que pagar de seña: el precio por el porcentaje dividido 100, redondeado.
