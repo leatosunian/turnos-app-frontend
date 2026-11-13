@@ -137,6 +137,8 @@ export class NegocioPage {
     if (!servicio) return null;
     return { porcentaje: porcentajeSena(servicio), monto: montoSena(servicio.price, servicio) };
   });
+  /** Servicio sin seña: el turno queda confirmado al reservar, no hay nada que pagar. */
+  protected readonly sinSena = computed(() => this.senaServicio()?.porcentaje === 0);
   private readonly libresPorDia = computed(() => agruparPorDia(this.libres()));
   protected readonly semanas = computed(() =>
     semanasDelMes(this.mes(), new Set(this.libresPorDia().keys())),

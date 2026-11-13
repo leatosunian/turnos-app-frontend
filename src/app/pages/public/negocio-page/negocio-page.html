@@ -45,8 +45,12 @@
           <ul class="flex basis-full flex-wrap gap-2.5 text-[13px] lg:basis-auto">
             @if (senaServicio(); as sena) {
               <li aria-live="polite" class="rounded-full bg-accent-soft px-3.5 py-2 text-accent">
-                Seña del {{ sena.porcentaje }}% ·
-                <span class="font-mono">{{ sena.monto | monto }}</span>
+                @if (sinSena()) {
+                  Sin seña
+                } @else {
+                  Seña del {{ sena.porcentaje }}% ·
+                  <span class="font-mono">{{ sena.monto | monto }}</span>
+                }
               </li>
             }
             <li class="rounded-full bg-surface-2 px-3.5 py-2 text-fg-2">
@@ -364,15 +368,21 @@
               } @else {
                 <span class="xl:hidden">
                   Reservar
-                  @if (sena() !== null) {
+                  @if (sena()) {
                     · seña {{ sena() | monto }}
                   }
                 </span>
-                <span class="hidden xl:inline">Reservar y pagar seña</span>
+                <span class="hidden xl:inline">{{
+                  sinSena() ? 'Reservar' : 'Reservar y pagar seña'
+                }}</span>
               }
             </button>
             <p class="hidden text-center text-small text-muted xl:block">
-              Tenés 30 minutos para pagar la seña antes de que se libere el horario.
+              @if (sinSena()) {
+                Este servicio no pide seña: el turno queda confirmado al reservar.
+              } @else {
+                Tenés 30 minutos para pagar la seña antes de que se libere el horario.
+              }
             </p>
           </div>
         </div>

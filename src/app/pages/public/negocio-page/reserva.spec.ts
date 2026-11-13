@@ -4,6 +4,7 @@ import {
   claveDeFecha,
   mesDeClave,
   montoSena,
+  porcentajeSena,
   nombreRubro,
   semanasDelMes,
   separarPorTurno,
@@ -53,10 +54,17 @@ describe('reserva', () => {
     expect(tarde.map((t) => t.id)).toEqual(['c']);
   });
 
-  it('montoSena usa 30 % si el porcentaje del servicio no es válido, como el back', () => {
+  it('montoSena usa 30 % si el porcentaje del servicio falta o no es válido, como el back', () => {
     expect(montoSena(12500, { depositPorcentage: 30 })).toBe(3750);
-    expect(montoSena(10000, { depositPorcentage: 0 })).toBe(3000);
     expect(montoSena(10000, { depositPorcentage: 50 })).toBe(5000);
+    expect(montoSena(10000, { depositPorcentage: 150 })).toBe(3000);
+    expect(montoSena(10000, { depositPorcentage: -5 })).toBe(3000);
+    expect(montoSena(10000, { depositPorcentage: null as unknown as number })).toBe(3000);
+  });
+
+  it('el 0 % es sin seña, no el 30 % por defecto', () => {
+    expect(porcentajeSena({ depositPorcentage: 0 })).toBe(0);
+    expect(montoSena(10000, { depositPorcentage: 0 })).toBe(0);
   });
 
   it('nombreRubro pone tildes a los conocidos y capitaliza el resto', () => {
