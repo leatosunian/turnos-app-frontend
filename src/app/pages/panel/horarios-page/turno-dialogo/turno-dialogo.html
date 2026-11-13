@@ -1,0 +1,106 @@
+<app-dialogo [titulo]="titulo()" [bloqueado]="guardando()" (cerrado)="cancelado.emit()">
+  @if (servicios().length) {
+    <!-- sin FormsModule el submit recargaria la pagina, por eso el preventDefault -->
+    <form (submit)="$event.preventDefault(); guardar()" novalidate class="flex flex-col gap-4">
+      <app-campo etiqueta="Servicio">
+        <select (change)="cambiarServicio($any($event.target).value)">
+          @for (opcion of servicios(); track opcion.id) {
+            <option [value]="opcion.id" [selected]="opcion.id === servicioId()">
+              {{ opcion.name }} · {{ opcion.durationMinutes }} min
+            </option>
+          }
+        </select>
+      </app-campo>
+
+      <app-campo etiqueta="Profesional">
+        <select (change)="empleadoId.set($any($event.target).value)">
+          <option value="" [selected]="!empleadoId()">Sin asignar</option>
+          @for (empleado of equipo(); track empleado.id) {
+            <option [value]="empleado.id" [selected]="empleado.id === empleadoId()">
+              {{ empleado.name }}
+            </option>
+          }
+        </select>
+      </app-campo>
+
+      <div class="grid grid-cols-2 gap-3">
+        <app-campo etiqueta="Inicio">
+          <select (change)="cambiarInicio($any($event.target).value)" class="font-mono">
+            @for (hora of horasInicio(); track hora) {
+              <option [value]="hora" [selected]="hora === inicio()">{{ hora }}</option>
+            }
+          </select>
+        </app-campo>
+        <app-campo etiqueta="Fin">
+          <select (change)="fin.set($any($event.target).value)" class="font-mono">
+            @for (hora of horasFin(); track hora) {
+              <option [value]="hora" [selected]="hora === fin()">{{ hora }}</option>
+            }
+          </select>
+        </app-campo>
+      </div>
+
+      @if (servicio(); as s) {
+        <p class="-mt-1 text-small text-muted">
+          Dura <span class="font-mono text-fg-2">{{ s.durationMinutes }} min</span> y cuesta
+          <span class="font-mono text-fg-2">{{ s.price | monto }}</span
+          >.
+        </p>
+      }
+
+      @if (problema()) {
+        <p role="alert" class="text-small text-danger-fg">{{ problema() }}</p>
+      }
+      @if (errorServidor()) {
+        <p role="alert" class="text-small text-danger-fg">{{ errorServidor() }}</p>
+      }
+
+      <p class="rounded-xl border border-dashed border-line-strong p-3 text-small text-muted">
+        @if (agendaAutomatica()) {
+          Al guardar se actualizan tus turnos libres. Los que ya están reservados no se tocan.
+        } @else {
+          Queda guardado en la plantilla y se publica cuando prendas la agenda automática.
+        }
+      </p>
+
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        @if (editando()) {
+          <button
+            appBoton
+            variante="destructivo"
+            type="button"
+            [disabled]="guardando()"
+            (click)="pedirEliminar()"
+            class="sm:mr-auto"
+          >
+            Eliminar
+          </button>
+        }
+        <button
+          appBoton
+          variante="secundario"
+          type="button"
+          [disabled]="guardando()"
+          (click)="cancelado.emit()"
+        >
+          Cancelar
+        </button>
+        <button appBoton type="submit" [disabled]="guardando() || !!problema()">
+          @if (guardando()) {
+            Guardando…
+          } @else {
+            {{ editando() ? 'Guardar cambios' : 'Agregar turno' }}
+          }
+        </button>
+      </div>
+    </form>
+  } @else {
+    <p class="text-fg-2">Para armar la plantilla primero necesitás cargar al menos un servicio.</p>
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button appBoton variante="secundario" type="button" (click)="cancelado.emit()">
+        Cerrar
+      </button>
+      <a appBoton routerLink="/panel/servicios">Ir a servicios</a>
+    </div>
+  }
+</app-dialogo>

@@ -1,1 +1,600 @@
-<p>horarios-page works!</p>
+<div class="flex flex-col gap-5">
+  <header class="flex flex-col gap-1">
+    <!-- en el celular se entra desde "Más", así que se vuelve ahí -->
+    <button
+      type="button"
+      (click)="volverAMas()"
+      class="mb-0.5 flex w-fit items-center gap-1 text-[13px] text-muted hover:text-fg lg:hidden"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M15 6l-6 6 6 6" />
+      </svg>
+      Más
+    </button>
+    <span class="text-[13px] text-muted">Configuración</span>
+    <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">
+      Horarios y plantillas
+    </h1>
+  </header>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <div aria-busy="true" aria-label="Cargando horarios" class="flex flex-col gap-3">
+        <div class="h-11 animate-pulse rounded-control bg-surface-2"></div>
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="h-20 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos vas a poder armar tus horarios y tu plantilla de turnos."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold text-danger-fg">No se pudieron cargar los horarios</span>
+          <span class="text-small text-fg-2">{{ errorCarga() }}</span>
+        </div>
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+    @case ('listo') {
+      <section
+        aria-labelledby="titulo-atencion"
+        class="flex flex-col gap-4 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:p-5"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div class="flex flex-col gap-1">
+            <h2 id="titulo-atencion" class="text-lg font-semibold">Horario de atención</h2>
+            <p class="text-fg-2">
+              Para cada día elegí el horario y cargá los turnos que querés ofrecer.
+            </p>
+          </div>
+          <button appBoton variante="secundario" type="button" (click)="abrirLote()">
+            Asignar en lote
+          </button>
+        </div>
+
+        <!-- resultado del ultimo lote, hasta que el dueño lo cierre -->
+        @if (avisoLote(); as aviso) {
+          <div
+            role="status"
+            class="flex items-start gap-2.5 rounded-card border px-3.5 py-2.5 text-small"
+            [class]="
+              aviso.ok
+                ? 'border-success-line bg-success-soft text-fg'
+                : 'border-danger-line bg-danger-soft text-fg'
+            "
+          >
+            <span
+              aria-hidden="true"
+              class="mt-1.5 size-2 shrink-0 rounded-full"
+              [class]="aviso.ok ? 'bg-success' : 'bg-danger'"
+            ></span>
+            <p class="flex-1">{{ aviso.texto }}</p>
+            <button
+              type="button"
+              (click)="avisoLote.set(null)"
+              aria-label="Cerrar aviso"
+              class="-m-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted hover:text-fg"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        }
+
+        <p class="rounded-card border border-accent-line bg-accent-soft px-3.5 py-2.5 text-fg-2">
+          Esta es tu <span class="font-semibold text-fg">plantilla semanal</span>: los turnos se
+          publican en tu página solo con la
+          <button
+            type="button"
+            (click)="irAAgenda()"
+            class="font-semibold text-fg underline decoration-accent underline-offset-2 hover:text-accent"
+          >
+            agenda automática
+          </button>
+          prendida.
+          @if (negocio()?.automaticSchedule) {
+            Ahora está prendida, así que cada cambio actualiza tus turnos libres.
+          } @else {
+            Ahora está apagada.
+          }
+        </p>
+
+        <!-- pestañas de los días: los cerrados se ven apagados -->
+        <div
+          role="tablist"
+          aria-label="Días de la semana"
+          class="grid grid-cols-7 gap-1 rounded-control border border-line bg-app p-1"
+        >
+          @for (info of dias; track info.dia) {
+            <button
+              type="button"
+              role="tab"
+              [id]="'pestania-' + info.dia"
+              [attr.aria-selected]="diaElegido() === info.numero"
+              aria-controls="panel-dia"
+              (click)="elegirDia(info.numero)"
+              class="flex h-11 flex-col items-center justify-center gap-0.5 rounded-lg text-[13px] font-medium"
+              [class]="
+                diaElegido() === info.numero
+                  ? 'bg-surface-3 text-fg'
+                  : semana()[info.numero]?.enabled
+                    ? 'text-fg-2 hover:text-fg'
+                    : 'text-faint hover:text-fg-2'
+              "
+            >
+              {{ info.corto }}
+              <!-- el puntito marca los días abiertos -->
+              <span
+                aria-hidden="true"
+                class="size-1 rounded-full"
+                [class]="semana()[info.numero]?.enabled ? 'bg-accent' : 'bg-transparent'"
+              ></span>
+            </button>
+          }
+        </div>
+
+        @if (dia(); as d) {
+          <div
+            id="panel-dia"
+            role="tabpanel"
+            [attr.aria-labelledby]="'pestania-' + d.day"
+            class="flex flex-col rounded-card border border-line bg-app"
+          >
+            <!-- encabezado del día: abierto o cerrado y su horario -->
+            <div
+              class="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-line px-3.5 py-3"
+            >
+              <div class="flex items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  class="h-8 w-1 rounded-full"
+                  [class]="d.enabled ? 'bg-accent' : 'bg-idle'"
+                ></span>
+                <div class="flex flex-col">
+                  <span class="font-semibold">{{ infoDia().largo }}</span>
+                  <span class="text-small text-muted">{{ resumenDia() }}</span>
+                </div>
+              </div>
+
+              <label class="flex items-center gap-2 text-small text-fg-2">
+                <app-interruptor
+                  [encendido]="d.enabled"
+                  (encendidoChange)="cambiarAbierto($event)"
+                  [etiqueta]="infoDia().largo + ' abierto'"
+                />
+                {{ d.enabled ? 'Abierto' : 'Cerrado' }}
+              </label>
+
+              @if (d.enabled && d.dayStart && d.dayEnd) {
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <label class="flex items-center gap-2 text-small text-muted">
+                    Desde
+                    <select
+                      (change)="cambiarDesde($any($event.target).value)"
+                      class="h-9 rounded-control border border-line bg-surface-1 px-2 font-mono text-body text-fg outline-none focus:border-accent"
+                    >
+                      @for (hora of horasDesde(); track hora) {
+                        <option [value]="hora" [selected]="hora === horaCorta(d.dayStart)">
+                          {{ hora }}
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-2 text-small text-muted">
+                    Hasta
+                    <select
+                      (change)="cambiarHasta($any($event.target).value)"
+                      class="h-9 rounded-control border border-line bg-surface-1 px-2 font-mono text-body text-fg outline-none focus:border-accent"
+                    >
+                      @for (hora of horasHasta(); track hora) {
+                        <option [value]="hora" [selected]="hora === horaCorta(d.dayEnd)">
+                          {{ hora }}
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-2 text-small text-muted">
+                    Intervalos
+                    <select
+                      (change)="cambiarIntervalo($any($event.target).value)"
+                      class="h-9 rounded-control border border-line bg-surface-1 px-2 font-mono text-body text-fg outline-none focus:border-accent"
+                    >
+                      @for (minutos of intervalos; track minutos) {
+                        <option
+                          [value]="minutos"
+                          [selected]="minutos === (d.appointmentDuration ?? 30)"
+                        >
+                          {{ minutos }} min
+                        </option>
+                      }
+                    </select>
+                  </label>
+                </div>
+              }
+
+              <span aria-live="polite" class="text-small lg:ml-auto">
+                @switch (guardado()) {
+                  @case ('guardando') {
+                    <span class="text-muted">Guardando…</span>
+                  }
+                  @case ('guardado') {
+                    <span class="text-success">Guardado</span>
+                  }
+                  @case ('error') {
+                    <span class="text-danger-fg">{{ errorGuardado() }}</span>
+                  }
+                }
+              </span>
+            </div>
+
+            @if (!d.enabled) {
+              <p
+                class="mx-3.5 mt-3 rounded-xl border border-dashed border-line-strong p-3 text-small text-muted"
+              >
+                @if (d.dayStart) {
+                  Este día está cerrado. Sus turnos programados quedan guardados, pero no se
+                  publican hasta que lo vuelvas a abrir.
+                } @else {
+                  Este día está cerrado. Abrilo para elegir su horario y cargar turnos.
+                }
+              </p>
+            }
+
+            <!-- grilla: una fila por intervalo, con los turnos que arrancan en esa franja -->
+            @if (d.dayStart && d.dayEnd) {
+              <ul
+                aria-label="Turnos programados del día"
+                class="flex flex-col px-3.5 py-1"
+                [class.opacity-60]="!d.enabled"
+              >
+                @for (fila of grilla().filas; track fila.hora; let primera = $first) {
+                  <li
+                    class="grid grid-cols-[44px_minmax(0,1fr)] gap-2 py-2 sm:grid-cols-[52px_minmax(0,1fr)]"
+                    [class.border-t]="!primera"
+                    [class.border-line]="!primera"
+                  >
+                    <div class="flex flex-col items-center gap-1 pt-1">
+                      <span class="font-mono text-small text-muted">{{ fila.hora }}</span>
+                      @if (d.enabled) {
+                        <button
+                          type="button"
+                          (click)="nuevoTurno(fila.hora)"
+                          [attr.aria-label]="'Agregar un turno a las ' + fila.hora"
+                          class="flex size-6 items-center justify-center rounded-md text-accent hover:bg-accent-soft"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 5v14M5 12h14" />
+                          </svg>
+                        </button>
+                      }
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                      @for (turno of fila.turnos; track turno.id) {
+                        <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: turno }" />
+                      } @empty {
+                        @if (d.enabled) {
+                          <!-- franja vacia: casi invisible hasta pasar el mouse, como en Sacaturno,
+                               asi un dia con muchas filas libres no queda cargado -->
+                          <!-- para el lector de pantalla y el teclado ya esta el "+" de la
+                               fila, asi que este queda fuera para no repetir el mismo boton -->
+                          <button
+                            type="button"
+                            tabindex="-1"
+                            aria-hidden="true"
+                            (click)="nuevoTurno(fila.hora)"
+                            class="flex min-h-10 flex-1 items-center rounded-card border border-dashed border-transparent px-3 text-small text-transparent hover:border-line-strong hover:text-faint focus-visible:text-faint"
+                          >
+                            Agregar un turno a las {{ fila.hora }}
+                          </button>
+                        }
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+
+            <!-- turnos sin fila: o el horario del día se achicó y quedaron afuera, o el día
+                 nunca tuvo horario (cargados desde Swagger con el día cerrado) -->
+            @if (grilla().fueraDeHorario.length) {
+              <div
+                class="mx-3.5 my-3 flex flex-col gap-2 rounded-card border p-3"
+                [class]="d.dayStart ? 'border-danger-line' : 'border-line'"
+              >
+                @if (d.dayStart) {
+                  <p class="text-small text-danger-fg">
+                    Estos turnos programados quedan fuera del horario del día. Editalos o
+                    eliminalos.
+                  </p>
+                } @else {
+                  <p class="text-small text-muted">Turnos programados guardados para este día.</p>
+                }
+                <div class="flex flex-wrap gap-2">
+                  @for (turno of grilla().fueraDeHorario; track turno.id) {
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: turno }" />
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- leyenda de colores por profesional -->
+            <div
+              class="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line px-3.5 py-2.5 text-small text-muted"
+            >
+              @for (item of leyenda(); track item.nombre) {
+                <span class="flex items-center gap-1.5">
+                  <span aria-hidden="true" class="size-2 rounded-full" [class]="item.punto"></span>
+                  {{ item.nombre }}
+                </span>
+              }
+              <span class="text-faint lg:ml-auto">Tocá un turno para editarlo</span>
+            </div>
+          </div>
+        }
+      </section>
+
+      @if (negocio(); as n) {
+        <!-- el pb-16 del celular es para que el boton flotante "+" del layout no tape el texto
+             de abajo de todo -->
+        <section
+          id="agenda-automatica"
+          aria-labelledby="titulo-agenda"
+          class="flex scroll-mt-4 flex-col gap-4 pb-16 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:p-5"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <div class="flex max-w-xl flex-col gap-1">
+              <h2 id="titulo-agenda" class="text-lg font-semibold">Agenda automática</h2>
+              <p class="text-fg-2">
+                Publica los turnos de tu plantilla en tu página. Todas las madrugadas revisa cuántos
+                días quedan cargados y, cuando quedan pocos, suma los que siguen.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-small text-fg-2">
+              <app-interruptor
+                [encendido]="n.automaticSchedule"
+                (encendidoChange)="cambiarAutomatica($event)"
+                etiqueta="Agenda automática"
+              />
+              {{ n.automaticSchedule ? 'Prendida' : 'Apagada' }}
+            </label>
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-2">
+            <!-- frecuencia y cantidad de días -->
+            <div class="flex flex-col gap-3 rounded-card border border-line bg-app p-3.5">
+              <span class="font-semibold">Frecuencia y cantidad de días</span>
+              <div class="grid grid-cols-2 gap-3">
+                <app-campo etiqueta="Días a crear" [error]="erroresAgenda().dias">
+                  <input
+                    type="number"
+                    inputmode="numeric"
+                    [min]="limitesDias.min"
+                    [max]="limitesDias.max"
+                    [value]="borradorDias()"
+                    (input)="escribirDias($any($event.target).value)"
+                    class="font-mono"
+                  />
+                </app-campo>
+                <app-campo etiqueta="Anticipación (días)" [error]="erroresAgenda().anticipacion">
+                  <input
+                    type="number"
+                    inputmode="numeric"
+                    [min]="limitesAnticipacion.min"
+                    [max]="limitesAnticipacion.max"
+                    [value]="borradorAnticipacion()"
+                    (input)="escribirAnticipacion($any($event.target).value)"
+                    class="font-mono"
+                  />
+                </app-campo>
+              </div>
+              <p class="text-small text-muted">
+                Se publican {{ n.scheduleDaysToCreate }} días de turnos desde hoy y, cuando quedan
+                {{ n.scheduleAnticipation }} o menos, se suman otros {{ n.scheduleDaysToCreate }}.
+              </p>
+              <span aria-live="polite" class="min-h-5 text-small">
+                @switch (guardadoAgenda()) {
+                  @case ('guardando') {
+                    <span class="text-muted">Guardando…</span>
+                  }
+                  @case ('guardado') {
+                    <span class="text-success">Guardado</span>
+                  }
+                  @case ('error') {
+                    <span class="text-danger-fg">{{ errorAgenda() }}</span>
+                  }
+                }
+              </span>
+            </div>
+
+            <!-- resumen -->
+            <dl
+              class="grid grid-cols-2 content-start gap-x-4 gap-y-3 rounded-card border border-line bg-app p-3.5"
+            >
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Estado</dt>
+                <dd class="flex items-center gap-1.5 font-medium">
+                  <span
+                    aria-hidden="true"
+                    class="size-2 rounded-full"
+                    [class]="n.automaticSchedule ? 'bg-success' : 'bg-idle'"
+                  ></span>
+                  {{ n.automaticSchedule ? 'Prendida' : 'Apagada' }}
+                </dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Turnos por semana</dt>
+                <dd class="font-mono font-medium">{{ turnosSemana() }}</dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Cargada hasta</dt>
+                <dd class="font-medium">
+                  @if (n.scheduleEnd) {
+                    {{ n.scheduleEnd | fecha }}
+                  } @else {
+                    Sin turnos generados
+                  }
+                </dd>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <dt class="text-small text-muted">Próxima renovación</dt>
+                <dd class="font-medium">
+                  @if (renovacion(); as r) {
+                    {{ r | fecha }} a las 02:00
+                  } @else {
+                    No hay
+                  }
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <button
+              appBoton
+              type="button"
+              [disabled]="!n.automaticSchedule || generando() || guardadoAgenda() === 'guardando'"
+              (click)="generar()"
+            >
+              {{ generando() ? 'Generando…' : 'Generar turnos ahora' }}
+            </button>
+            <span role="status" class="text-small">
+              @if (resultadoGenerar(); as r) {
+                <span [class]="r.ok ? 'text-success' : 'text-danger-fg'">{{ r.texto }}</span>
+              } @else if (!n.automaticSchedule) {
+                <span class="text-muted">Prendé la agenda automática para generar turnos.</span>
+              } @else {
+                <span class="text-muted">
+                  Borra los turnos libres que vienen y los vuelve a crear con la plantilla. Los
+                  reservados no se tocan.
+                </span>
+              }
+            </span>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
+
+<!-- tarjeta de un turno programado, con el color de su profesional -->
+<ng-template #tarjeta let-turno>
+  <button
+    type="button"
+    (click)="editarTurno(turno)"
+    [attr.aria-label]="
+      'Editar ' +
+      nombreServicio(turno) +
+      ' de ' +
+      horaCorta(turno.startTime) +
+      ' a ' +
+      horaCorta(turno.endTime) +
+      ', ' +
+      nombreProfesional(turno)
+    "
+    class="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 rounded-xl border px-2.5 py-2 text-left hover:border-fg-2 sm:flex sm:w-44 sm:flex-col"
+    [class]="clasesTarjeta(turno)"
+  >
+    <span class="truncate text-[13px] font-semibold text-fg">{{ nombreServicio(turno) }}</span>
+    <span class="text-right font-mono text-small text-fg-2 sm:text-left">
+      {{ horaCorta(turno.startTime) }}–{{ horaCorta(turno.endTime) }}
+    </span>
+    <span class="flex min-w-0 items-center gap-1.5 text-small text-fg-2">
+      <span
+        aria-hidden="true"
+        class="size-1.5 shrink-0 rounded-full"
+        [class]="clasesPunto(turno)"
+      ></span>
+      <span class="truncate">{{ nombreProfesional(turno) }}</span>
+    </span>
+    <span class="text-right font-mono text-small text-fg sm:text-left">{{
+      turno.price | monto
+    }}</span>
+  </button>
+</ng-template>
+
+@if (apertura(); as a) {
+  <app-turno-dialogo
+    [businessId]="negocio()!.id"
+    [apertura]="a"
+    [dia]="semana()[a.dayNumber]"
+    [servicios]="servicios()"
+    [equipo]="equipo()"
+    [plantilla]="plantilla()"
+    [agendaAutomatica]="!!negocio()?.automaticSchedule"
+    (guardado)="turnoGuardado($event)"
+    (eliminar)="pedirBaja($event)"
+    (cancelado)="cerrarDialogo()"
+  />
+}
+
+@if (loteAbierto()) {
+  <app-lote-dialogo
+    [businessId]="negocio()!.id"
+    [semana]="semana()"
+    [servicios]="servicios()"
+    [equipo]="equipo()"
+    [plantilla]="plantilla()"
+    [diaInicial]="diaElegido()"
+    (terminado)="loteTerminado($event)"
+    (cancelado)="loteAbierto.set(false)"
+  />
+}
+
+@if (baja(); as b) {
+  <app-confirmacion
+    titulo="¿Eliminar este turno programado?"
+    textoConfirmar="Eliminar"
+    textoProcesando="Eliminando…"
+    [procesando]="procesandoBaja()"
+    [error]="errorBaja()"
+    (confirmado)="confirmarBaja()"
+    (cancelado)="cancelarBaja()"
+  >
+    {{ nombreServicio(b) }} de {{ horaCorta(b.startTime) }} a {{ horaCorta(b.endTime) }} sale de la
+    plantilla.
+    @if (negocio()?.automaticSchedule) {
+      Sus turnos libres se borran; los que ya están reservados se mantienen.
+    }
+  </app-confirmacion>
+}
