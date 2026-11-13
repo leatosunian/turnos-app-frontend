@@ -180,7 +180,7 @@ describe('IngresarPage', () => {
   it('recuperar contraseña está deshabilitado y marcado como Futuro', async () => {
     await abrir();
     const recuperar = Array.from(pagina().querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Recuperarla'),
+      b.textContent?.includes('Restablecer contraseña'),
     );
     expect(recuperar?.disabled).toBe(true);
     expect(pagina().textContent).toContain('Futuro');
