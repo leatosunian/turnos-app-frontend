@@ -22,8 +22,9 @@ export interface AppointmentResponse {
   price: number;
   businessId: string;
   /**
-   * Pedidos al back para Mis turnos (TA-27): hoy no vienen y un CLIENT no puede pedir
-   * GET /businesses/{id}. Mientras falten, la pantalla muestra solo el servicio.
+   * Nombre y link del negocio, para que Mis turnos y la pantalla de pago lo muestren sin pedir
+   * el negocio (un CLIENT no puede pedir GET /businesses/{id}). Si no vienen, se muestra solo
+   * el servicio.
    */
   businessName?: string | null;
   businessSlug?: string | null;

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse, BusinessTypeResponse } from '../../../core/models/negocio';
 import { AdminNegocioService } from '../../../core/services/admin-negocio-service';
@@ -196,6 +196,20 @@ describe('AdminRubrosPage', () => {
     await enviar(input.closest('form')!);
     expect(servicio.editar).not.toHaveBeenCalled();
     expect(el().querySelector('input[aria-label="Nuevo nombre para Taller"]')).toBeNull();
+  });
+
+  it('confirmar dos veces seguidas elimina una sola vez', async () => {
+    // el pedido queda en curso: nunca responde
+    servicio.eliminar.mockReturnValue(NEVER);
+    await crearPagina();
+
+    boton('Eliminar Peluquería').click();
+    await refrescar();
+    const pagina = fixture.componentInstance as unknown as { confirmarEliminar(): void };
+    pagina.confirmarEliminar();
+    pagina.confirmarEliminar();
+
+    expect(servicio.eliminar).toHaveBeenCalledTimes(1);
   });
 
   it('eliminar pide confirmación, avisa si lo usan negocios y lo saca de la lista', async () => {

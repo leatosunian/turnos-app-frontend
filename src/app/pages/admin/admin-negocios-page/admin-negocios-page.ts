@@ -156,7 +156,8 @@ export class AdminNegociosPage implements OnInit {
 
   protected confirmarBaja(): void {
     const negocio = this.aDarDeBaja();
-    if (!negocio) return;
+    // el botón se deshabilita mientras procesa, pero se cuida igual de un segundo envío
+    if (!negocio || this.procesando()) return;
 
     this.procesando.set(true);
     this.errorBaja.set('');

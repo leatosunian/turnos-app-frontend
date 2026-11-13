@@ -3,7 +3,7 @@ import localeEsAr from '@angular/common/locales/es-AR';
 import { LOCALE_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { AppointmentResponse, AppointmentStatus, DepositStatus } from '../../../core/models/turno';
 import { AppointmentService } from '../../../core/services/appointment-service';
@@ -179,6 +179,20 @@ describe('MisTurnosPage', () => {
     expect(texto()).toContain('Cancelaste el turno. Te devolvemos la seña.');
     expect(texto()).toContain('Próximos · 0');
     expect(texto()).toContain('Seña devuelta');
+  });
+
+  it('confirmar dos veces seguidas cancela una sola vez', async () => {
+    await crear([MANIANA]);
+    // el pedido queda en curso: nunca responde
+    servicio.cancelar.mockReturnValue(NEVER);
+
+    boton('Cancelar turno')!.click();
+    await refrescar();
+    const pagina = fixture.componentInstance as unknown as { confirmarCancelar(): void };
+    pagina.confirmarCancelar();
+    pagina.confirmarCancelar();
+
+    expect(servicio.cancelar).toHaveBeenCalledTimes(1);
   });
 
   it('si el back rechaza la cancelación, el diálogo queda abierto con el error', async () => {
