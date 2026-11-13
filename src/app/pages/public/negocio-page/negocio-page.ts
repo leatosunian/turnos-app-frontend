@@ -329,9 +329,17 @@ export class NegocioPage {
 
   /** Deja elegido un día con horarios libres y muestra su mes. */
   private ajustarDia(): void {
+    // las claves (aaaa-mm-dd) vienen en orden, asi que se comparan como texto
     const dias = [...this.libresPorDia().keys()];
     const dia = this.dia();
-    const elegido = dia && dias.includes(dia) ? dia : (dias[0] ?? null);
+    // Si el dia elegido se quedo sin horarios (por ejemplo, alguien tomo el ultimo mientras el
+    // cliente lo tenia elegido), pasa al siguiente con horarios y, si no hay, al anterior mas
+    // cercano. Asi no salta al primer dia del calendario, que puede estar semanas antes
+    const elegido = !dia
+      ? (dias[0] ?? null)
+      : dias.includes(dia)
+        ? dia
+        : (dias.find((d) => d > dia) ?? dias.at(-1) ?? null);
     this.dia.set(elegido);
     this.mes.set(elegido ? mesDeClave(elegido) : primerDiaDelMes(new Date()));
   }

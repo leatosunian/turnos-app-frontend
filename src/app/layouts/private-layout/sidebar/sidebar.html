@@ -27,8 +27,10 @@
   </div>
 
   @if (!admin()) {
+    <!-- abre el dialogo de nuevo turno de la Agenda (ver abrirNuevoDelMenu en agenda-page) -->
     <a
-      routerLink="/panel/turnos"
+      routerLink="/panel/agenda"
+      [queryParams]="{ nuevo: 1 }"
       class="flex h-10 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
     >
       + Nuevo turno

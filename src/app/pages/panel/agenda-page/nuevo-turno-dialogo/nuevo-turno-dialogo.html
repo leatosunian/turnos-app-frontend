@@ -95,6 +95,9 @@
         </div>
       }
 
+      @if (despuesDelCierre()) {
+        <p role="alert" class="text-small text-danger-fg">{{ despuesDelCierre() }}</p>
+      }
       @if (choque()) {
         <p role="alert" class="text-small text-danger-fg">{{ choque() }}</p>
       }
@@ -122,7 +125,11 @@
         >
           Cancelar
         </button>
-        <button appBoton type="submit" [disabled]="guardando() || !!choque()">
+        <button
+          appBoton
+          type="submit"
+          [disabled]="guardando() || !!choque() || !!despuesDelCierre()"
+        >
           {{ guardando() ? 'Creando…' : 'Crear turno' }}
         </button>
       </div>
