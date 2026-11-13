@@ -25,8 +25,12 @@ const HORA_TARDE = 13;
 const SENA_POR_DEFECTO = 30;
 
 // el back guarda los rubros en mayuscula y sin tildes (PELUQUERIA), asi que los que llevan tilde
-// los escribimos a mano. Los que no estan aca se muestran con la primera letra en mayuscula nomas
+// los escribimos a mano. Los que no estan aca se muestran con la primera letra en mayuscula nomas.
+// GYM y TATTOO vienen en ingles desde el seeder del back, por eso tambien los traducimos aca.
+// Esta lista la usan el perfil del negocio y los chips de rubros de la landing.
 const NOMBRES_RUBRO: Record<string, string> = {
+  GYM: 'Gimnasio',
+  TATTOO: 'Tatuajes',
   PELUQUERIA: 'Peluquería',
   ESTETICA: 'Estética',
   FOTOGRAFIA: 'Fotografía',

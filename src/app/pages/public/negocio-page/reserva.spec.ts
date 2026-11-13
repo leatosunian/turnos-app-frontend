@@ -61,6 +61,11 @@ describe('reserva', () => {
 
   it('nombreRubro pone tildes a los conocidos y capitaliza el resto', () => {
     expect(nombreRubro({ id: '1', name: 'PELUQUERIA', deleted: false })).toBe('Peluquería');
-    expect(nombreRubro({ id: '2', name: 'GYM', deleted: false })).toBe('Gym');
+    expect(nombreRubro({ id: '2', name: 'SPA', deleted: false })).toBe('Spa');
+  });
+
+  it('nombreRubro traduce los rubros que el back trae en inglés', () => {
+    expect(nombreRubro({ id: '1', name: 'GYM', deleted: false })).toBe('Gimnasio');
+    expect(nombreRubro({ id: '2', name: 'TATTOO', deleted: false })).toBe('Tatuajes');
   });
 });

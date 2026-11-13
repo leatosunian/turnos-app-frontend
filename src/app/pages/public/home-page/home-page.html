@@ -1,1 +1,357 @@
-<p>home-page works!</p>
+<!-- Portada. Ocupa la pantalla entera debajo del header (61 px en el celular y 73 en desktop,
+     contando el borde). En desktop entran el texto y la tarjeta lado a lado. En el celular y la
+     tablet el que ocupa la pantalla es el bloque de texto, y la tarjeta queda abajo, para ver
+     al bajar. Usamos svh y no vh porque en el celular vh no descuenta la barra del navegador
+     y la portada quedaba mas alta que la pantalla. -->
+<!-- El margen negativo y el padding del mismo alto que el header (61 px en el celular, 73 en
+     desktop) hacen que la seccion arranque detras del header. Asi el fondo animado se ve a
+     traves del header translucido y quedan integrados, pero el contenido sigue en su lugar. -->
+<section class="relative isolate -mt-[61px] overflow-hidden pt-[61px] lg:-mt-[73px] lg:pt-[73px]">
+  <!-- fondo animado de la portada: grilla, luces y un haz de luz, ver home-page.css -->
+  <div class="fondo-portada" aria-hidden="true">
+    <span class="fondo-luces"></span>
+  </div>
+  <div
+    class="contenedor grid gap-6 pb-12 lg:min-h-[calc(100svh-73px)] lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-12 lg:py-10 xl:gap-16"
+  >
+    <div
+      class="flex min-h-[calc(100svh-61px)] flex-col justify-center gap-5 py-10 sm:gap-6 lg:min-h-0 lg:py-0 2xl:gap-7"
+    >
+      <div appAparecer><app-pastilla tono="ambar">Agenda de turnos online</app-pastilla></div>
+      <!-- En desktop el tamaño del titulo depende del ancho y del alto de la pantalla, el que de
+         menos: 5vw es el 5 % del ancho y 8.5vh el 8.5 % del alto. Por ejemplo en una laptop de
+         1366 por 768 da unos 56 px y en un monitor de 1920 por 1080 llega al tope de 76. Asi en
+         laptops chicas no queda gigante y en pantallas bajas sigue entrando todo. -->
+      <h1
+        appAparecer="80"
+        class="text-[42px] leading-[0.98] font-semibold tracking-[-1.6px] sm:text-[56px] sm:tracking-[-2px] lg:text-[length:clamp(48px,min(5vw,8.5vh),76px)] lg:leading-[0.95] lg:tracking-[-0.04em]"
+      >
+        Tu agenda automática,
+        <span class="text-muted">tu secretario virtual.</span>
+      </h1>
+      <p
+        appAparecer="160"
+        class="max-w-140 text-base leading-normal text-fg-2 sm:text-lg lg:text-[17px] 2xl:text-[19px]"
+      >
+        Compartís tu link y tus clientes eligen el servicio, el día y el horario. Pagan una seña
+        para confirmar el turno y vos ves toda la jornada en una sola pantalla.
+      </p>
+      <div
+        appAparecer="240"
+        class="flex flex-col gap-2.5 pt-1 sm:flex-row sm:items-center sm:gap-3"
+      >
+        <a
+          appBoton
+          grande
+          routerLink="/ingresar"
+          [queryParams]="{ modo: 'crear' }"
+          class="text-base"
+        >
+          Crear mi negocio gratis
+        </a>
+        <a appBoton grande variante="secundario" [routerLink]="['/', perfilDeEjemplo]">
+          Ver negocio de ejemplo
+          <span class="font-mono text-small text-muted">/{{ perfilDeEjemplo }}</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Tarjeta de muestra con el dia de un negocio, es un dibujo y no esta conectada al back.
+       En desktop la altura va entre 420 y 520 px segun el alto de la pantalla (62vh), asi en
+       una laptop de 768 de alto no se sale de la portada. En tablet se frena en 576 px de
+       ancho para que no quede una tarjeta larguisima. -->
+    <div
+      appAparecer="320"
+      class="relative mx-auto w-full max-w-xl pb-7 lg:h-[clamp(420px,62vh,520px)] lg:max-w-none lg:pb-0"
+      aria-label="Así se ve tu día"
+      role="img"
+    >
+      <div
+        class="flex flex-col gap-1 rounded-container border border-line bg-surface-1 px-3 pt-4 pb-14 lg:absolute lg:inset-[0_0_40px_24px] lg:gap-2.5 lg:rounded-[22px] lg:p-5 xl:inset-[0_0_40px_40px] xl:p-6"
+      >
+        <div class="flex items-center justify-between px-1.5 pb-2 lg:px-0">
+          <span class="text-base font-semibold lg:text-lg">Hoy · martes 28</span>
+          <span class="font-mono text-small text-muted lg:text-body">12 turnos · 78%</span>
+        </div>
+        @for (turno of turnosDeEjemplo; track turno.hora) {
+          @let clases = clasesDeTurno(turno.estado);
+          <div
+            class="grid grid-cols-[46px_10px_1fr_auto] items-center gap-2.5 rounded-control px-2 py-2.5 text-[13px] lg:grid-cols-[64px_12px_1fr_auto] lg:gap-3 lg:rounded-xl lg:p-3 lg:text-[15px]"
+            [class]="clases.fila"
+          >
+            <span class="font-mono" [class]="clases.hora">{{ turno.hora }}</span>
+            <span class="size-2 rounded-full lg:size-2.5" [class]="clases.punto"></span>
+            <!-- el servicio se ve en tablet y desde 1280 px. En el celular y en laptops chicas la
+               tarjeta es angosta y el texto se partia en tres renglones -->
+            <span class="whitespace-nowrap">
+              {{ turno.cliente
+              }}<span class="hidden sm:inline lg:hidden xl:inline"> · {{ turno.servicio }}</span>
+            </span>
+            <span class="text-[11px] lg:text-small" [class]="clases.etiqueta">
+              {{ turno.etiqueta }}
+            </span>
+          </div>
+        }
+        <!-- el turno libre solo entra en desktop, en el celular la tarjeta queda muy larga -->
+        <div
+          class="hidden grid-cols-[64px_12px_1fr_auto] items-center gap-3 rounded-xl border border-dashed border-line-strong p-3 text-[15px] text-muted lg:grid"
+        >
+          <span class="font-mono">13:15</span>
+          <span class="size-2.5 rounded-full border-2 border-dashed border-idle"></span>
+          <span>Libre</span>
+        </div>
+      </div>
+
+      <div
+        class="absolute inset-x-4 bottom-0 flex items-center gap-3 rounded-card border border-line-strong bg-surface-2 px-3.5 py-3 lg:right-auto lg:left-0 lg:w-70 lg:rounded-2xl lg:p-4"
+      >
+        <span
+          class="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-success-soft lg:size-9 lg:rounded-control"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            class="text-success"
+            aria-hidden="true"
+          >
+            <path d="M5 12l5 5 9-10" />
+          </svg>
+        </span>
+        <div class="flex flex-col">
+          <span class="font-semibold">Seña recibida</span>
+          <span class="font-mono text-small text-muted">Camila R. · $8.400</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Cómo funciona. El id lo usan los links del header y del footer -->
+<section id="como" class="border-t border-line">
+  <div
+    class="contenedor grid gap-7 py-10 sm:py-14 lg:grid-cols-[240px_repeat(3,minmax(0,1fr))] lg:gap-8 xl:grid-cols-[320px_repeat(3,minmax(0,1fr))] xl:py-18"
+  >
+    <div appAparecer class="flex flex-col gap-2.5">
+      <app-pastilla>Cómo funciona</app-pastilla>
+      <h2
+        class="text-[30px] leading-[1.08] font-semibold tracking-[-0.9px] lg:text-[32px] lg:leading-[1.05] xl:text-4xl xl:tracking-[-1.2px]"
+      >
+        Empezá a recibir reservas en tres pasos.
+      </h2>
+    </div>
+    @for (paso of pasos; track paso.numero; let primero = $first) {
+      <div
+        [appAparecer]="($index + 1) * 120"
+        class="flex flex-col gap-2 border-t-2 pt-2.5 lg:gap-3 lg:pt-1.5"
+        [class]="primero ? 'border-accent' : 'border-line-strong'"
+      >
+        <div class="flex items-baseline gap-3 lg:flex-col lg:gap-3">
+          <span
+            class="font-mono text-[13px] lg:text-[15px]"
+            [class]="primero ? 'text-accent' : 'text-muted'"
+          >
+            {{ paso.numero }}
+          </span>
+          <span class="text-lg font-semibold lg:text-xl">{{ paso.titulo }}</span>
+        </div>
+        <p class="leading-normal text-muted lg:text-[15px]">{{ paso.texto }}</p>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- Funciones -->
+<section id="funciones">
+  <div
+    class="contenedor grid gap-3 pt-2 pb-10 sm:grid-cols-2 sm:pb-14 lg:grid-cols-6 lg:gap-4 lg:pt-6 xl:pb-20"
+  >
+    <div
+      appAparecer
+      class="flex flex-col gap-4 rounded-container border border-line bg-surface-1 p-5.5 sm:col-span-2 lg:col-span-4 lg:min-h-75 lg:flex-row lg:gap-8 lg:rounded-[22px] lg:p-8"
+    >
+      <div class="flex flex-1 flex-col gap-2.5 lg:gap-3">
+        <app-pastilla tono="ambar">Agenda automática</app-pastilla>
+        <h3
+          class="text-[22px] leading-tight font-semibold tracking-[-0.5px] lg:text-[28px] lg:tracking-[-0.8px]"
+        >
+          Configurás la semana una sola vez.
+        </h3>
+        <p class="leading-normal text-muted lg:text-[15px]">
+          Todas las noches la agenda se extiende según tu plantilla. Si cerrás un día de la semana,
+          ese día no se generan turnos.
+        </p>
+      </div>
+      <!-- dibujo de la agenda: una ventana que muestra tres semanas y adentro una pista con seis,
+           que va subiendo de a una semana. Ver celdasAnimadas en el ts y semanas en el css -->
+      <div class="ventana-agenda self-center lg:w-60 lg:shrink-0 xl:w-80" aria-hidden="true">
+        <div class="pista-agenda grid grid-cols-6 gap-1.25 lg:gap-1.5">
+          @for (celda of celdasAnimadas; track $index) {
+            <span
+              class="h-6.5 rounded-[5px] lg:h-8.5 lg:rounded-md"
+              [class]="claseDeCelda(celda)"
+            ></span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div
+      appAparecer="120"
+      class="flex flex-col justify-between gap-6 rounded-container bg-accent p-5.5 text-on-accent sm:col-span-2 lg:col-span-2 lg:min-h-75 lg:rounded-[22px] lg:p-8"
+    >
+      <app-pastilla>Señas</app-pastilla>
+      <div class="flex flex-col gap-2">
+        <span class="text-[26px] leading-[1.05] font-semibold tracking-[-1px] lg:text-[30px]">
+          Menos ausencias.
+        </span>
+        <p class="leading-normal lg:text-[15px]">
+          Al pagar una seña, el cliente se compromete a asistir.
+        </p>
+      </div>
+    </div>
+
+    <div
+      appAparecer
+      class="flex flex-col gap-2.5 rounded-container border border-line bg-surface-1 p-5.5 lg:col-span-2 lg:rounded-[22px] lg:p-7"
+    >
+      <app-pastilla>Equipo</app-pastilla>
+      <span class="text-lg font-semibold lg:text-xl">Una agenda para cada profesional</span>
+      <p class="leading-normal text-muted lg:text-[15px]">
+        Asignás los horarios de cada uno, y cada profesional consulta sus turnos y sus horas
+        trabajadas.
+      </p>
+    </div>
+
+    <div
+      appAparecer="120"
+      class="flex flex-col gap-2.5 rounded-container border border-line bg-surface-1 p-5.5 lg:col-span-2 lg:rounded-[22px] lg:p-7"
+    >
+      <app-pastilla>Estadísticas</app-pastilla>
+      <span class="text-lg font-semibold lg:text-xl">
+        Ocupación, ingresos y días de mayor demanda
+      </span>
+      <p class="leading-normal text-muted lg:text-[15px]">
+        Por día, semana, mes o el período que elijas. Sabés qué servicio genera más ingresos y qué
+        profesional atiende más clientes.
+      </p>
+    </div>
+
+    <div
+      appAparecer="240"
+      class="flex flex-col gap-2.5 rounded-container border border-line bg-surface-1 p-5.5 sm:col-span-2 lg:col-span-2 lg:rounded-[22px] lg:p-7"
+    >
+      <app-pastilla>Tu link</app-pastilla>
+      <span class="font-mono text-base font-medium lg:text-lg">
+        turnosapp.com/<span class="text-accent">tu-negocio</span>
+      </span>
+      <p class="leading-normal text-muted lg:text-[15px]">
+        Una página con tus servicios, precios y horarios disponibles, lista para compartir con tus
+        clientes.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Rubros, salen de GET /business-types. Arriba el encabezado con la cantidad de rubros y
+     abajo un indice: cada rubro con su numero y una linea fina arriba, como las filas de una
+     agenda. Va dentro del contenedor, asi tiene el mismo ancho y los mismos margenes que el
+     resto de las secciones. -->
+<section id="rubros" class="border-t border-line">
+  <div class="contenedor flex flex-col gap-8 py-10 sm:py-14 lg:gap-10 xl:py-16">
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <div appAparecer class="flex max-w-150 flex-col gap-2.5">
+        <app-pastilla>Rubros</app-pastilla>
+        <h2
+          class="text-[30px] leading-[1.08] font-semibold tracking-[-0.9px] lg:text-[32px] xl:text-4xl xl:tracking-[-1.2px]"
+        >
+          Para todos los negocios que atienden por turno
+        </h2>
+        <p class="leading-normal text-muted lg:text-[15px]">
+          Peluquerías, consultorios, gimnasios, estudios de tatuaje y mucho más. Cada negocio elige
+          sus rubros al configurar su perfil.
+        </p>
+      </div>
+      @if (rubros().length) {
+        <div appAparecer="120" class="flex flex-col gap-2 sm:items-end">
+          <div class="flex items-baseline gap-2.5 sm:flex-col sm:items-end sm:gap-1">
+            <span class="font-mono text-[40px] leading-none font-medium text-accent lg:text-5xl">
+              {{ rubros().length }}
+            </span>
+            <span class="text-muted">rubros disponibles</span>
+          </div>
+          <!-- para el que no encuentra su rubro en la lista: igual puede crear su negocio -->
+          <p class="text-small text-muted">
+            ¿No está tu rubro?
+            <a
+              routerLink="/ingresar"
+              [queryParams]="{ modo: 'crear' }"
+              class="font-medium text-accent hover:text-accent-hover"
+            >
+              Probalo gratis
+            </a>
+          </p>
+        </div>
+      }
+    </div>
+
+    @if (rubros().length) {
+      <!-- 2 columnas en el celular, 3 en tablet y 4 en desktop. Cada rubro aparece 40 ms despues
+           del anterior, asi el indice se va completando de arriba a la izquierda hacia abajo -->
+      <ul class="grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-8">
+        @for (rubro of rubros(); track rubro) {
+          <li
+            [appAparecer]="$index * 40"
+            class="group flex items-baseline gap-3 border-t border-line py-4 hover:border-accent lg:py-5"
+          >
+            <span
+              class="font-mono text-small text-muted transition-colors group-hover:text-accent"
+              aria-hidden="true"
+            >
+              {{ numeroDeRubro($index) }}
+            </span>
+            <span
+              class="nombre-rubro text-base font-medium text-fg-2 transition-colors group-hover:text-fg lg:text-lg"
+            >
+              {{ rubro }}
+            </span>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>
+
+<!-- Cierre -->
+<section class="contenedor pt-2 pb-12 lg:pt-4 xl:pb-16">
+  <div
+    appAparecer
+    class="flex flex-col gap-6 rounded-container border border-line bg-surface-1 p-6 sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:gap-10 lg:rounded-[28px] xl:p-14"
+  >
+    <h2
+      class="max-w-175 text-[32px] leading-[1.05] font-semibold tracking-[-1px] sm:text-[40px] lg:leading-none xl:text-5xl xl:tracking-[-1.8px]"
+    >
+      Tu link de turnos, listo en minutos.
+    </h2>
+    <div class="flex flex-col gap-4 lg:items-end">
+      <a
+        appBoton
+        grande
+        routerLink="/ingresar"
+        [queryParams]="{ modo: 'crear' }"
+        class="text-base lg:h-14 lg:px-7"
+      >
+        Crear mi negocio
+      </a>
+      @if (accesos.veMisTurnos()) {
+        <a routerLink="/mis-turnos" class="w-fit text-fg-2 hover:text-accent">
+          ¿Sos cliente? Consultá tus turnos
+        </a>
+      }
+    </div>
+  </div>
+</section>
