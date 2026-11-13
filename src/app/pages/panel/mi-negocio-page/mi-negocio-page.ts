@@ -47,6 +47,8 @@ export const MAX_DESCRIPCION = 300;
 // El back necesita saber cuántos días de turnos generar. Después se ajusta en Horarios.
 export const DIAS_A_GENERAR = 30;
 const RUBROS_VISIBLES = 5;
+// Cuántos rubros puede tener un negocio. Más que eso deja de describir qué hace.
+export const MAX_RUBROS = 3;
 // La vista previa muestra los primeros, como la página pública.
 const SERVICIOS_EN_VISTA_PREVIA = 2;
 
@@ -99,6 +101,7 @@ export class MiNegocioPage implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
 
   protected readonly maxDescripcion = MAX_DESCRIPCION;
+  protected readonly maxRubros = MAX_RUBROS;
   protected readonly dominio = `${location.host}/`;
 
   protected readonly estado = signal<Estado>('cargando');
@@ -203,6 +206,9 @@ export class MiNegocioPage implements OnInit {
     return todos.slice(0, cantidad);
   });
 
+  /** Con el tope alcanzado sólo se pueden destildar rubros, no sumar otros. */
+  protected readonly topeDeRubros = computed(() => this.rubrosElegidos().size >= MAX_RUBROS);
+
   protected readonly rubrosOcultos = computed(
     () => this.rubrosOrdenados().length - this.rubrosVisibles().length,
   );
@@ -290,7 +296,7 @@ export class MiNegocioPage implements OnInit {
       const nuevos = new Set(elegidos);
       if (nuevos.has(id)) {
         nuevos.delete(id);
-      } else {
+      } else if (nuevos.size < MAX_RUBROS) {
         nuevos.add(id);
       }
       return nuevos;
@@ -307,6 +313,11 @@ export class MiNegocioPage implements OnInit {
     this.enviado.set(true);
     this.errorGuardar.set(null);
     if (this.form.invalid || this.guardando()) return;
+    // Un negocio creado antes del tope puede tener más: tiene que sacar alguno para guardar.
+    if (this.rubrosElegidos().size > MAX_RUBROS) {
+      this.errorGuardar.set(`Elegí hasta ${MAX_RUBROS} rubros.`);
+      return;
+    }
 
     this.guardando.set(true);
     const pedido = this.estado() === 'crear' ? this.crear() : this.actualizar();
