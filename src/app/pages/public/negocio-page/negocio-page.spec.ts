@@ -243,4 +243,41 @@ describe('NegocioPage', () => {
     expect(() => boton('11:00')).toThrow();
     expect(boton('Reservar').disabled).toBe(true);
   });
+
+  it('si el día elegido se queda sin horarios, pasa al siguiente con lugar y no al primero', async () => {
+    const dia3 = libre('t-3', '2030-04-03T09:00:00');
+    const dia10 = libre('t-10', '2030-04-10T11:00:00');
+    const dia24 = libre('t-24', '2030-04-24T15:30:00');
+    await cargar([dia3, dia10, dia24]);
+    // los botones del calendario: tienen aria-pressed y solo el número del día
+    const dias = () =>
+      [...el().querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].filter((b) =>
+        /^\d+$/.test(b.textContent!.trim()),
+      );
+    const diaElegido = () => dias().find((b) => b.getAttribute('aria-pressed') === 'true');
+    dias()
+      .find((b) => b.textContent?.trim() === '10')!
+      .click();
+    await refrescar();
+
+    boton('11:00').click();
+    await escribir('Nombre', 'Federico Paz');
+    await escribir('Email', 'fede@mail.com');
+    boton('Reservar').click();
+    await refrescar();
+    httpMock
+      .expectOne(`${API}/appointments/t-10/book`)
+      .flush(
+        { message: 'El turno ya no está disponible.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    httpMock
+      .expectOne((r) => r.url === `${API}/businesses/n-1/appointments/public`)
+      .flush([dia3, dia24]);
+    await refrescar();
+
+    expect(el().textContent).toContain('Ese horario se acaba de ocupar');
+    expect(diaElegido()?.textContent?.trim()).toBe('24');
+    expect(boton('15:30')).toBeTruthy();
+  });
 });
