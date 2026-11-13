@@ -1,6 +1,7 @@
 <nav
   [attr.aria-label]="admin() ? 'Administración' : 'Panel'"
-  class="fixed inset-x-2.5 bottom-2.5 z-20 grid h-16 grid-cols-4 items-center rounded-container border border-line-strong bg-surface-2 text-[11px]"
+  [class]="columnas()"
+  class="fixed inset-x-2.5 bottom-2.5 z-20 grid h-16 items-center rounded-container border border-line-strong bg-surface-2 text-[11px]"
 >
   @for (link of links(); track link.ruta) {
     <a
@@ -57,7 +58,7 @@
     </a>
   }
 
-  @if (!admin()) {
+  @if (conMas()) {
     <button
       type="button"
       (click)="alternarMas.emit()"

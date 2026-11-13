@@ -64,21 +64,24 @@
           routerLinkActive="text-fg"
           class="hover:text-accent"
         >
-          Ingresar
+          {{ accesos.textoIngresar() }}
         </a>
       }
+      <!-- Con sesion no va Crear mi negocio: la cuenta ya existe y /ingresar la mandaria a su
+           panel (ver invitadoGuard). En su lugar queda Cerrar sesion. -->
       @if (logueado()) {
         <button type="button" (click)="cerrarSesion()" class="hidden hover:text-accent lg:block">
           Cerrar sesión
         </button>
+      } @else {
+        <a
+          routerLink="/ingresar"
+          [queryParams]="{ modo: 'crear' }"
+          class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover lg:flex"
+        >
+          Crear mi negocio
+        </a>
       }
-      <a
-        routerLink="/ingresar"
-        [queryParams]="{ modo: 'crear' }"
-        class="hidden h-10 items-center rounded-control bg-accent px-4.5 font-semibold text-on-accent hover:bg-accent-hover lg:flex"
-      >
-        Crear mi negocio
-      </a>
       <button
         type="button"
         class="flex size-10 items-center justify-center rounded-control border border-line-strong bg-surface-1 text-fg lg:hidden"
@@ -146,15 +149,16 @@
         >
           Cerrar sesión
         </button>
+      } @else {
+        <a
+          routerLink="/ingresar"
+          [queryParams]="{ modo: 'crear' }"
+          (click)="cerrarMenu()"
+          class="mt-2 flex h-12 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
+        >
+          Crear mi negocio
+        </a>
       }
-      <a
-        routerLink="/ingresar"
-        [queryParams]="{ modo: 'crear' }"
-        (click)="cerrarMenu()"
-        class="mt-2 flex h-12 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
-      >
-        Crear mi negocio
-      </a>
     </div>
   }
 </header>

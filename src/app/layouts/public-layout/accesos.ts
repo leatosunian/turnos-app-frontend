@@ -19,11 +19,19 @@ import { AuthService } from '../../core/services/auth-service';
 //   cliente). Ahi Ingresar lo llevaria a Mis turnos, que ya esta como link propio. A un dueño o
 //   admin se le deja, porque es su acceso al panel. Si tiene CLIENT y OWNER, su ruta es /panel.
 //
+// - textoIngresar: el texto de ese mismo link. Sin sesion dice Ingresar. Con sesion ya no tiene
+//   sentido, porque al lado aparece Cerrar sesion y quedaban los dos juntos: dice Mi panel para
+//   el dueño y el empleado, y Administracion para el admin.
+//
 // Tiene que llamarse en el constructor o en la declaracion de un campo, porque usa inject().
 export function accesosDeSesion() {
   const auth = inject(AuthService);
   return {
     rutaIngresar: computed(() => (auth.logueado() ? auth.rutaInicial() : '/ingresar')),
+    textoIngresar: computed(() => {
+      if (!auth.logueado()) return 'Ingresar';
+      return auth.rutaInicial() === '/admin' ? 'Administración' : 'Mi panel';
+    }),
     veMisTurnos: computed(() => !auth.logueado() || auth.tieneRol(['CLIENT'])),
     veIngresar: computed(() => !auth.logueado() || auth.rutaInicial() !== '/mis-turnos'),
   };

@@ -83,7 +83,7 @@ describe('errorInterceptor', () => {
         { status: 401, statusText: 'Unauthorized' },
       );
 
-    expect(cerrarSesion).toHaveBeenCalled();
+    expect(cerrarSesion).toHaveBeenCalledWith('/ingresar');
   });
 
   it('un 403 no cierra la sesión: es falta de permiso, no sesión vencida', () => {

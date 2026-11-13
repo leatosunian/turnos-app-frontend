@@ -24,6 +24,14 @@ export interface FiltroTurnos {
 /** Más nuevos primero. */
 export const ORDEN_TURNOS = 'startDatetime,desc';
 
+// Filtros de la lista de turnos del empleado (Mis turnos del panel). Las fechas van como
+// yyyy-MM-dd y las dos cuentan enteras, por ejemplo desde 2026-11-14 hasta 2026-11-14 es solo
+// ese dia. Sin fechas trae todos
+export interface FiltroTurnosEmpleado extends FiltroTurnos {
+  desde?: string;
+  hasta?: string;
+}
+
 /** Turnos del panel del negocio (Turnos, Hoy y Agenda) y la reserva desde el perfil público. */
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
@@ -109,6 +117,22 @@ export class AppointmentService {
   /** Solo turnos UNBOOKED. */
   eliminar(id: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/appointments/${id}`);
+  }
+
+  // Turnos asignados al empleado logueado, de cualquier estado, paginados. Solo EMPLOYEE: el
+  // back saca el empleado del token, asi que nunca devuelve los de un compañero. Lo usa la
+  // pantalla Mis turnos. Por defecto vienen del mas viejo al mas nuevo
+  deEmpleado(filtro: FiltroTurnosEmpleado = {}): Observable<Pagina<AppointmentResponse>> {
+    let params = new HttpParams()
+      .set('page', filtro.page ?? 0)
+      .set('size', filtro.size ?? 20)
+      .set('sort', filtro.sort ?? 'startDatetime,asc');
+    if (filtro.status) params = params.set('status', filtro.status);
+    if (filtro.desde) params = params.set('dateFrom', filtro.desde);
+    if (filtro.hasta) params = params.set('dateTo', filtro.hasta);
+    return this.http
+      .get<PageResponse<AppointmentResponse>>(`${this.url}/employees/me/appointments`, { params })
+      .pipe(map(aPagina));
   }
 
   /** Turnos del cliente con sesión, más nuevos primero. Solo CLIENT. */

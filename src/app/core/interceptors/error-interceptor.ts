@@ -18,7 +18,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       // Los 401 de /auth (credenciales incorrectas, sesión vencida al recargar) los maneja AuthService.
       if (error.status === 401 && !req.url.startsWith(`${environment.apiUrl}/auth/`)) {
-        auth.cerrarSesion();
+        auth.cerrarSesion('/ingresar');
       }
       return throwError(() => aApiError(error));
     }),

@@ -92,6 +92,23 @@ describe('AppointmentService', () => {
     eliminar.flush(null);
   });
 
+  it('deEmpleado pide los turnos del empleado logueado con fechas, estado y orden', () => {
+    let total: number | undefined;
+    service
+      .deEmpleado({ status: 'BOOKED', desde: '2026-11-13', page: 1 })
+      .subscribe((p) => (total = p.total));
+    const req = httpMock.expectOne((r) => r.url === `${URL}/employees/me/appointments`);
+    const params = req.request.params;
+    expect(params.get('dateFrom')).toBe('2026-11-13');
+    expect(params.has('dateTo')).toBe(false);
+    expect(params.get('status')).toBe('BOOKED');
+    expect(params.get('page')).toBe('1');
+    // sin orden pedido van del mas viejo al mas nuevo
+    expect(params.get('sort')).toBe('startDatetime,asc');
+    req.flush({ content: [TURNO], totalElements: 21, totalPages: 2, number: 1, size: 20 });
+    expect(total).toBe(21);
+  });
+
   it('misTurnos y cancelar usan los endpoints del cliente', () => {
     let turnos: AppointmentResponse[] | undefined;
     service.misTurnos().subscribe((t) => (turnos = t));
