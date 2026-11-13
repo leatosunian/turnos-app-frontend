@@ -217,19 +217,21 @@ describe('ServiciosPage', () => {
     expect(el.textContent).toContain('Tomas Rivero');
   });
 
-  it('al editar un profesional pide una contraseña nueva', async () => {
+  it('al editar un profesional la contraseña es opcional y vacía no se manda', async () => {
     await cargar([], [LUCIA]);
     botonPorEtiqueta('Opciones de Lucia Morales').click();
     await refrescar();
     boton('Editar').click();
     await refrescar();
 
-    expect(el.textContent).toContain('Contraseña nueva');
+    expect(el.textContent).toContain('Contraseña nueva (opcional)');
     boton('Guardar cambios').click();
     await refrescar();
 
-    httpMock.expectNone(`${API}/employees/e-1`);
-    expect(el.textContent).toContain('Ingresá una contraseña.');
+    const pedido = httpMock.expectOne(`${API}/employees/e-1`);
+    expect(pedido.request.method).toBe('PUT');
+    expect(pedido.request.body).toEqual({ name: LUCIA.name, email: LUCIA.email });
+    pedido.flush(LUCIA);
   });
 
   it('si el back no deja quitar al profesional, muestra el motivo', async () => {

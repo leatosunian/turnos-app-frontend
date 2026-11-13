@@ -36,6 +36,7 @@ import { Boton } from '../../../shared/components/boton/boton';
 import { Campo } from '../../../shared/components/campo/campo';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { MontoPipe } from '../../../shared/pipes/monto-pipe';
+import { emailValido, obligatorio } from '../../../shared/validadores/validadores';
 
 type Estado = 'cargando' | 'crear' | 'editar' | 'error';
 
@@ -120,7 +121,7 @@ export class MiNegocioPage implements OnInit {
   protected readonly copiado = signal(false);
 
   protected readonly form = this.fb.group({
-    nombre: ['', [Validators.required, Validators.maxLength(100)]],
+    nombre: ['', [obligatorio, Validators.maxLength(100)]],
     slug: [
       '',
       [
@@ -130,7 +131,7 @@ export class MiNegocioPage implements OnInit {
         slugReservado,
       ],
     ],
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [obligatorio, emailValido, Validators.maxLength(255)]],
     telefono: ['', [Validators.required, telefonoValido]],
     descripcion: ['', Validators.maxLength(MAX_DESCRIPCION)],
   });
@@ -149,6 +150,7 @@ export class MiNegocioPage implements OnInit {
     email: {
       required: 'Ingresá un email de contacto.',
       email: 'Revisá el email, no parece válido.',
+      maxlength: 'Puede tener hasta 255 caracteres.',
     },
     telefono: {
       required: 'Ingresá un teléfono.',

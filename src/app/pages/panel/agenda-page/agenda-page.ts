@@ -41,10 +41,10 @@ import {
   horaDe,
   lunesDeSemana,
   posicionDeAhora,
+  rangoDeSemana,
   resumenDelDia,
   sumarDias,
   sumarSinRepetir,
-  textoDeSemana,
   turnosDelDia,
 } from './agenda';
 import { DetalleTurnoDialogo } from './detalle-turno-dialogo/detalle-turno-dialogo';
@@ -186,7 +186,8 @@ export class AgendaPage implements OnInit {
   // semana, asi pasar de un martes al martes siguiente es un solo click
   protected readonly diaElegido = signal((new Date().getDay() + 6) % 7);
 
-  protected readonly titulo = computed(() => textoDeSemana(this.lunes()));
+  // Las fechas que muestra el dock de arriba, por ejemplo "2 al 8 nov"
+  protected readonly rango = computed(() => rangoDeSemana(this.lunes()));
   protected readonly dias = computed(() => diasDeLaSemana(this.lunes(), this.ahora()));
   protected readonly dia = computed(() => this.dias()[this.diaElegido()]);
   // el horario de atencion del dia elegido. semanaAtencion ya viene ordenada de lunes a domingo
@@ -345,7 +346,12 @@ export class AgendaPage implements OnInit {
   // Boton Hoy: vuelve a la semana actual y elige el dia de hoy
   protected irAHoy(): void {
     this.diaElegido.set((this.ahora().getDay() + 6) % 7);
-    this.router.navigate([], { relativeTo: this.ruta, queryParams: { semana: null } });
+    // scroll manual para que cambiar de semana no suba la pagina, se queda donde estaba
+    this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: { semana: null },
+      scroll: 'manual',
+    });
   }
 
   protected elegirDia(numero: number): void {
@@ -407,6 +413,8 @@ export class AgendaPage implements OnInit {
       queryParams: { nuevo: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
+      // solo limpia la URL, no tiene que mover la pantalla mientras se abre el dialogo
+      scroll: 'manual',
     });
     if (!this.esSemanaActual()) return;
     const hoy = (this.ahora().getDay() + 6) % 7;
@@ -450,6 +458,8 @@ export class AgendaPage implements OnInit {
     this.router.navigate([], {
       relativeTo: this.ruta,
       queryParams: { semana: esActual ? null : claveDia(lunes) },
+      // sigue siendo la misma pantalla, asi que no se sube arriba al pasar de semana
+      scroll: 'manual',
     });
   }
 

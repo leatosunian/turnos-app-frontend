@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { EmployeeRequest } from '../models/empleado';
+import { EmployeeRequest, EmployeeUpdateRequest } from '../models/empleado';
 import { UserResponse } from '../models/usuario';
 
 @Injectable({ providedIn: 'root' })
@@ -23,7 +23,7 @@ export class EmpleadoService {
     );
   }
 
-  actualizar(id: string, datos: EmployeeRequest): Observable<UserResponse> {
+  actualizar(id: string, datos: EmployeeUpdateRequest): Observable<UserResponse> {
     return this.http.put<UserResponse>(`${this.url}/${id}`, datos);
   }
 

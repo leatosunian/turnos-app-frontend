@@ -136,6 +136,32 @@ describe('IngresarPage', () => {
     expect(auth.redirigirSegunRol).toHaveBeenCalled();
   });
 
+  it('acepta nombres con tilde y ñ, y saca los espacios de más', async () => {
+    await abrir('/ingresar?modo=crear');
+    await escribir('input[autocomplete="name"]', ' José   Muñoz ');
+    await escribir('input[type="email"]', ' jose@mail.com ');
+    await escribir('input[type="password"]', 'Clave123');
+    await enviar();
+
+    expect(auth.registrar).toHaveBeenCalledWith({
+      name: 'José Muñoz',
+      email: 'jose@mail.com',
+      password: 'Clave123',
+    });
+  });
+
+  it('no deja crear la cuenta con un nombre de solo espacios ni un email sin dominio', async () => {
+    await abrir('/ingresar?modo=crear');
+    await escribir('input[autocomplete="name"]', '   ');
+    await escribir('input[type="email"]', 'lucia@mail');
+    await escribir('input[type="password"]', 'Clave123');
+    await enviar();
+
+    expect(pagina().textContent).toContain('Ingresá tu nombre y apellido.');
+    expect(pagina().textContent).toContain('Revisá el email, no parece válido.');
+    expect(auth.registrar).not.toHaveBeenCalled();
+  });
+
   it('con "Quiero reservar" registra un cliente', async () => {
     await abrir('/ingresar?modo=crear');
     buscar<HTMLInputElement>('input[value="cliente"]').click();
@@ -157,7 +183,7 @@ describe('IngresarPage', () => {
     );
     await abrir('/ingresar?modo=crear');
     await escribir('input[autocomplete="name"]', 'Lucia Morales');
-    await escribir('input[type="email"]', 'lucia@mail');
+    await escribir('input[type="email"]', 'lucia@mail.com');
     await escribir('input[type="password"]', 'Clave123');
     await enviar();
 

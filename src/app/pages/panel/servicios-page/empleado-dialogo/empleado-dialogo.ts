@@ -6,21 +6,24 @@ import {
   Validators,
 } from '@angular/forms';
 import { ApiError } from '../../../../core/models/api-error';
-import { EmployeeRequest } from '../../../../core/models/empleado';
 import { UserResponse } from '../../../../core/models/usuario';
 import { EmpleadoService } from '../../../../core/services/empleado-service';
 import { Boton } from '../../../../shared/components/boton/boton';
 import { Campo } from '../../../../shared/components/campo/campo';
 import { Dialogo } from '../../../../shared/components/dialogo/dialogo';
+import {
+  NOMBRE_PERSONA,
+  emailValido,
+  obligatorio,
+} from '../../../../shared/validadores/validadores';
 
 // mismas reglas que el back (EmployeeRequest), iguales a las del registro
-const SOLO_LETRAS = /^[a-zA-Z\s]+$/;
 const CLAVE_SEGURA = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])[\x00-\x7F]+$/;
 
-/**
- * Alta y edición de un profesional. El back pide la contraseña también al editar, así que
- * editar siempre le pone una nueva: se avisa en el formulario.
- */
+// Alta y edicion de un profesional, desde Servicios y equipo.
+// Al agregar la contraseña es obligatoria, porque con ese email y esa clave entra al panel.
+// Al editar es opcional: el back (EmployeeUpdateRequest) solo la cambia si viene escrita, asi que
+// el dueño puede corregir el nombre o el email sin tener que inventarle una clave nueva.
 @Component({
   selector: 'app-empleado-dialogo',
   imports: [Boton, Campo, Dialogo, ReactiveFormsModule],
@@ -36,8 +39,8 @@ export class EmpleadoDialogo implements OnInit {
   private readonly empleados = inject(EmpleadoService);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
-    nombre: ['', [Validators.required, Validators.pattern(SOLO_LETRAS)]],
-    email: ['', [Validators.required, Validators.email]],
+    nombre: ['', [obligatorio, Validators.maxLength(100), Validators.pattern(NOMBRE_PERSONA)]],
+    email: ['', [obligatorio, emailValido]],
     password: [
       '',
       [
@@ -52,7 +55,8 @@ export class EmpleadoDialogo implements OnInit {
   protected readonly mensajes = {
     nombre: {
       required: 'Ingresá el nombre y apellido.',
-      pattern: 'Usá solo letras y espacios, sin tildes ni ñ.',
+      maxlength: 'Puede tener hasta 100 caracteres.',
+      pattern: 'Usá solo letras y espacios, sin números ni signos.',
     },
     email: { required: 'Ingresá el email.', email: 'Revisá el email, no parece válido.' },
     password: {
@@ -71,6 +75,9 @@ export class EmpleadoDialogo implements OnInit {
     const empleado = this.empleado();
     if (empleado) {
       this.form.patchValue({ nombre: empleado.name, email: empleado.email });
+      // al editar la contraseña puede quedar vacia; si se escribe, tiene que cumplir las reglas
+      this.form.controls.password.removeValidators(Validators.required);
+      this.form.controls.password.updateValueAndValidity();
     }
   }
 
@@ -80,11 +87,12 @@ export class EmpleadoDialogo implements OnInit {
     if (this.form.invalid || this.guardando()) return;
 
     const { nombre, email, password } = this.form.getRawValue();
-    const datos: EmployeeRequest = { name: nombre.trim(), email: email.trim(), password };
+    const datos = { name: nombre.trim().replace(/\s+/g, ' '), email: email.trim() };
     const empleado = this.empleado();
+    // al editar, la contraseña vacia no se manda y el back deja la que tenia
     const pedido = empleado
-      ? this.empleados.actualizar(empleado.id, datos)
-      : this.empleados.crear(this.businessId(), datos);
+      ? this.empleados.actualizar(empleado.id, password ? { ...datos, password } : datos)
+      : this.empleados.crear(this.businessId(), { ...datos, password });
 
     this.guardando.set(true);
     pedido.subscribe({

@@ -106,7 +106,10 @@ describe('ReservaPage', () => {
     expect(texto()).toContain('$8.750');
     expect(texto()).toContain('Cancelás 24 h antes o más');
     expect(botonPagar()!.textContent).toContain('Pagar $3.750');
-    expect(el().querySelector('[role="timer"]')?.textContent?.trim()).toBe('25:00');
+    // expiresAt se arma con la hora real (ahora mas 25 minutos) y el contador la compara con la
+    // hora del momento en que se dibuja. Con toda la suite corriendo a veces pasa un segundo entre
+    // una cosa y la otra y el contador ya muestra 24:59, asi que se aceptan los dos
+    expect(el().querySelector('[role="timer"]')?.textContent?.trim()).toMatch(/^(25:00|24:5\d)$/);
   });
 
   it('no usa los montos que lleguen al navegar: muestra los del back', async () => {

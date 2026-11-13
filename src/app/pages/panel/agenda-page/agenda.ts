@@ -86,32 +86,17 @@ export function diasDeLaSemana(lunes: Date, hoy: Date = new Date()): DiaAgenda[]
   });
 }
 
-// Numero de semana del año como lo usan los calendarios (ISO 8601): la semana 1 es la que tiene
-// el primer jueves del año. Se busca el jueves de la semana de la fecha, porque ese jueves
-// siempre cae en el año al que pertenece la semana, y se cuenta cuantas semanas pasaron desde el
-// 1 de enero de ese año. Por ejemplo el lunes 9/11/2026 es de la semana 46, y el 31/12/2024 ya es
-// de la semana 1 de 2025.
-// Se usa Date.UTC para que el cambio de horario de verano no deje un dia de 23 horas en la cuenta
-export function numeroDeSemana(fecha: Date): number {
-  const jueves = sumarDias(lunesDeSemana(fecha), 3);
-  const enUtc = Date.UTC(jueves.getFullYear(), jueves.getMonth(), jueves.getDate());
-  const primeroDeEnero = Date.UTC(jueves.getFullYear(), 0, 1);
-  const diasDesdeEnero = (enUtc - primeroDeEnero) / 86_400_000;
-  // el + 1 es porque la primera semana es la 1 y no la 0
-  return Math.floor(diasDesdeEnero / 7) + 1;
-}
-
-// El titulo chico de la semana arriba de las pestañas. Si la semana cruza de mes se nombran los
-// dos: del lunes 9/11 da "9 al 15 nov · semana 46" y del lunes 26/10 da
-// "26 oct al 1 nov · semana 44"
-export function textoDeSemana(lunes: Date): string {
+// Las fechas de la semana que van en el centro del dock de navegacion de la agenda. Si la semana
+// cruza de mes se nombran los dos: del lunes 9/11 da "9 al 15 nov" y del lunes 26/10 da
+// "26 oct al 1 nov"
+export function rangoDeSemana(lunes: Date): string {
   const domingo = sumarDias(lunes, 6);
   const mesDomingo = MESES[domingo.getMonth()];
   const desde =
     lunes.getMonth() === domingo.getMonth()
       ? `${lunes.getDate()}`
       : `${lunes.getDate()} ${MESES[lunes.getMonth()]}`;
-  return `${desde} al ${domingo.getDate()} ${mesDomingo} · semana ${numeroDeSemana(lunes)}`;
+  return `${desde} al ${domingo.getDate()} ${mesDomingo}`;
 }
 
 // La hora de un startDatetime o endDatetime, sin segundos. Las fechas del back tienen siempre el
