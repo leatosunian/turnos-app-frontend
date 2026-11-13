@@ -1,0 +1,131 @@
+<app-dialogo [titulo]="titulo()" [bloqueado]="guardando()" (cerrado)="cancelado.emit()">
+  @if (!servicios().length) {
+    <p class="text-fg-2">Para crear turnos primero necesitás cargar al menos un servicio.</p>
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button appBoton variante="secundario" type="button" (click)="cancelado.emit()">
+        Cerrar
+      </button>
+      <a appBoton routerLink="/panel/servicios">Ir a servicios</a>
+    </div>
+  } @else if (!horas().length) {
+    <!-- pasa si la fila terminó mientras el diálogo estaba por abrirse -->
+    <p class="text-fg-2">Ese horario ya pasó. Elegí una fila que todavía no haya empezado.</p>
+    <div class="flex justify-end">
+      <button appBoton variante="secundario" type="button" (click)="cancelado.emit()">
+        Cerrar
+      </button>
+    </div>
+  } @else {
+    <!-- sin FormsModule el submit recargaria la pagina, por eso el preventDefault -->
+    <form (submit)="$event.preventDefault(); guardar()" novalidate class="flex flex-col gap-4">
+      <app-segmentado
+        [opciones]="modos"
+        [(valor)]="modo"
+        etiqueta="Cómo queda el turno"
+        class="w-full [&>button]:flex-1"
+      />
+
+      <div class="grid grid-cols-[110px_minmax(0,1fr)] gap-3">
+        <app-campo etiqueta="Hora">
+          <select (change)="hora.set($any($event.target).value)" class="font-mono">
+            @for (opcion of horas(); track opcion) {
+              <option [value]="opcion" [selected]="opcion === hora()">{{ opcion }}</option>
+            }
+          </select>
+        </app-campo>
+        <app-campo etiqueta="Servicio">
+          <select (change)="servicioId.set($any($event.target).value)">
+            @for (opcion of servicios(); track opcion.id) {
+              <option [value]="opcion.id" [selected]="opcion.id === servicioId()">
+                {{ opcion.name }} · {{ opcion.durationMinutes }} min
+              </option>
+            }
+          </select>
+        </app-campo>
+      </div>
+
+      <app-campo etiqueta="Profesional">
+        <select (change)="empleadoId.set($any($event.target).value)">
+          <option value="" [selected]="!empleadoId()">Sin asignar</option>
+          @for (empleado of equipo(); track empleado.id) {
+            <option [value]="empleado.id" [selected]="empleado.id === empleadoId()">
+              {{ empleado.name }}
+            </option>
+          }
+        </select>
+      </app-campo>
+
+      @if (servicio(); as s) {
+        <p class="-mt-1 text-small text-muted">
+          Termina a las <span class="font-mono text-fg-2">{{ horaFin() }}</span> y cuesta
+          <span class="font-mono text-fg-2">{{ s.price | monto }}</span
+          >.
+        </p>
+      }
+
+      @if (paraCliente()) {
+        <div class="flex flex-col gap-3 rounded-card border border-line bg-app p-3.5">
+          <app-campo etiqueta="Nombre del cliente" [error]="errorNombre()">
+            <input
+              type="text"
+              maxlength="100"
+              autocomplete="off"
+              [value]="nombre()"
+              (input)="nombre.set($any($event.target).value)"
+            />
+          </app-campo>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <app-campo etiqueta="Email (opcional)" [error]="errorEmail()">
+              <input
+                type="email"
+                autocomplete="off"
+                [value]="email()"
+                (input)="email.set($any($event.target).value)"
+              />
+            </app-campo>
+            <app-campo etiqueta="Teléfono (opcional)" [error]="errorTelefono()">
+              <input
+                type="tel"
+                autocomplete="off"
+                [value]="telefono()"
+                (input)="telefono.set($any($event.target).value)"
+              />
+            </app-campo>
+          </div>
+        </div>
+      }
+
+      @if (choque()) {
+        <p role="alert" class="text-small text-danger-fg">{{ choque() }}</p>
+      }
+      @if (errorServidor()) {
+        <p role="alert" class="text-small text-danger-fg">{{ errorServidor() }}</p>
+      }
+
+      <p class="rounded-xl border border-dashed border-line-strong p-3 text-small text-muted">
+        @if (paraCliente()) {
+          Queda reservado a nombre del cliente, sin seña. Si después no puede venir, lo podés
+          suspender desde Turnos.
+        } @else {
+          Queda libre y se publica en tu página para que lo reserve un cliente. Aunque cambies la
+          plantilla, este turno se mantiene.
+        }
+      </p>
+
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button
+          appBoton
+          variante="secundario"
+          type="button"
+          [disabled]="guardando()"
+          (click)="cancelado.emit()"
+        >
+          Cancelar
+        </button>
+        <button appBoton type="submit" [disabled]="guardando() || !!choque()">
+          {{ guardando() ? 'Creando…' : 'Crear turno' }}
+        </button>
+      </div>
+    </form>
+  }
+</app-dialogo>

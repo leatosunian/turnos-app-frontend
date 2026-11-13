@@ -1,1 +1,388 @@
-<p>agenda-page works!</p>
+<!-- el pb-16 del celular es para que el boton flotante "+" del layout no tape lo de abajo -->
+<div class="flex flex-col gap-5 pb-16 lg:pb-0">
+  <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+    <div class="flex flex-col gap-1">
+      <span class="text-[13px] text-muted">{{ titulo() }}</span>
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Agenda</h1>
+    </div>
+
+    @if (estado() === 'listo') {
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            (click)="moverSemana(-1)"
+            aria-label="Semana anterior"
+            class="flex size-9 items-center justify-center rounded-control border border-line bg-surface-1 text-fg-2 hover:text-fg"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            (click)="irAHoy()"
+            [disabled]="esSemanaActual() && dia().esHoy"
+            class="h-9 rounded-control border border-line bg-surface-1 px-3.5 font-medium text-fg hover:border-line-strong disabled:text-muted"
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            (click)="moverSemana(1)"
+            aria-label="Semana siguiente"
+            class="flex size-9 items-center justify-center rounded-control border border-line bg-surface-1 text-fg-2 hover:text-fg"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+
+        <label class="flex items-center gap-2 text-small text-muted">
+          <span class="sr-only">Profesional</span>
+          <select
+            (change)="elegirProfesional($any($event.target).value)"
+            class="h-9 rounded-control border border-line bg-surface-1 px-2 text-body text-fg outline-none focus:border-accent"
+          >
+            <option value="" [selected]="filtro() === ''">Todo el equipo</option>
+            @for (empleado of equipo(); track empleado.id) {
+              <option [value]="empleado.id" [selected]="filtro() === empleado.id">
+                {{ empleado.name }}
+              </option>
+            }
+            <option [value]="sinAsignar" [selected]="filtro() === sinAsignar">Sin asignar</option>
+          </select>
+        </label>
+      </div>
+    }
+  </header>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <div aria-busy="true" aria-label="Cargando la agenda" class="flex flex-col gap-3">
+        <div class="h-14 animate-pulse rounded-control bg-surface-2"></div>
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="h-16 animate-pulse rounded-card bg-surface-2"></div>
+        }
+      </div>
+    }
+    @case ('sin-negocio') {
+      <app-aviso-vacio
+        titulo="Todavía no creaste tu negocio"
+        detalle="Cuando cargues sus datos y tus horarios, acá vas a ver los turnos de cada día."
+      >
+        <a appBoton routerLink="/panel/negocio">Crear mi negocio</a>
+      </app-aviso-vacio>
+    }
+    @case ('error') {
+      <div
+        role="alert"
+        class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+      >
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold text-danger-fg">No se pudo cargar la agenda</span>
+          <span class="text-small text-fg-2">{{ errorCarga() }}</span>
+        </div>
+        <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+    @case ('listo') {
+      <section
+        aria-label="Turnos de la semana"
+        class="flex flex-col gap-4 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:p-5"
+      >
+        <!-- pestañas de la semana: hoy en ámbar, los días cerrados apagados y un puntito en los
+             que tienen turnos -->
+        <div
+          role="tablist"
+          aria-label="Días de la semana"
+          class="grid grid-cols-7 gap-1 rounded-control border border-line bg-app p-1"
+        >
+          @for (d of dias(); track d.clave) {
+            <button
+              type="button"
+              role="tab"
+              [id]="'pestania-' + d.numero"
+              [attr.aria-selected]="diaElegido() === d.numero"
+              [attr.aria-label]="d.largo + ' ' + d.fecha.getDate() + (d.esHoy ? ', hoy' : '')"
+              aria-controls="panel-dia"
+              (click)="elegirDia(d.numero)"
+              class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-lg"
+              [class]="
+                diaElegido() === d.numero
+                  ? 'bg-surface-3 text-fg'
+                  : semanaAtencion()[d.numero]?.enabled
+                    ? 'text-fg-2 hover:text-fg'
+                    : 'text-faint hover:text-fg-2'
+              "
+            >
+              <span class="text-[12px] font-medium" [class.text-accent]="d.esHoy">
+                {{ d.corto }}
+              </span>
+              <span class="font-mono text-[15px] leading-5" [class.text-accent]="d.esHoy">
+                {{ d.fecha.getDate() }}
+              </span>
+              <span
+                aria-hidden="true"
+                class="size-1 rounded-full"
+                [class]="conTurnos().has(d.clave) ? 'bg-accent' : 'bg-transparent'"
+              ></span>
+            </button>
+          }
+        </div>
+
+        <div
+          id="panel-dia"
+          role="tabpanel"
+          [attr.aria-labelledby]="'pestania-' + diaElegido()"
+          class="flex flex-col rounded-card border border-line bg-app"
+        >
+          <!-- encabezado del día: la fecha, cuántos turnos tiene y su horario -->
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line px-3.5 py-3">
+            <div class="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                class="h-8 w-1 rounded-full"
+                [class]="atencion()?.enabled ? 'bg-accent' : 'bg-idle'"
+              ></span>
+              <div class="flex flex-col">
+                <span class="font-semibold">
+                  {{ dia().fecha | fecha }}
+                  @if (dia().esHoy) {
+                    <span class="font-normal text-accent">· hoy</span>
+                  }
+                </span>
+                <span class="text-small text-muted">
+                  {{ semanaLista() ? resumen() : 'Cargando turnos…' }}
+                </span>
+              </div>
+            </div>
+            <span class="font-mono text-small text-muted lg:ml-auto">{{ horarioDelDia() }}</span>
+          </div>
+
+          @if (errorTurnos()) {
+            <div
+              role="alert"
+              class="mx-3.5 mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-danger-line bg-danger-soft p-3 text-small"
+            >
+              <span class="flex-1 text-fg-2">
+                No se pudieron traer los turnos. {{ errorTurnos() }}
+              </span>
+              <button appBoton variante="secundario" type="button" (click)="reintentarTurnos()">
+                Reintentar
+              </button>
+            </div>
+          } @else if (!semanaLista()) {
+            <div aria-busy="true" aria-label="Cargando turnos" class="flex flex-col gap-2 p-3.5">
+              @for (i of [1, 2, 3, 4]; track i) {
+                <div class="h-12 animate-pulse rounded-xl bg-surface-2"></div>
+              }
+            </div>
+          } @else {
+            @if (!atencion()?.enabled) {
+              <p
+                class="mx-3.5 mt-3 rounded-xl border border-dashed border-line-strong p-3 text-small text-muted"
+              >
+                Este día está cerrado en
+                <a
+                  routerLink="/panel/horarios"
+                  class="font-semibold text-fg underline decoration-accent underline-offset-2 hover:text-accent"
+                  >Horarios y plantillas</a
+                >, así que la agenda automática no genera turnos. Igual podés crear turnos a mano
+                con el + de cada horario.
+              </p>
+            }
+
+            <!-- una fila por intervalo, con los turnos que arrancan en esa franja uno al lado
+                 del otro, igual que la grilla de Horarios -->
+            @if (grilla().filas.length) {
+              <ul aria-label="Turnos del día" class="flex flex-col px-3.5 py-1">
+                @for (fila of grilla().filas; track fila.hora; let i = $index, primera = $first) {
+                  <li
+                    class="relative grid grid-cols-[44px_minmax(0,1fr)] gap-2 py-2 sm:grid-cols-[52px_minmax(0,1fr)]"
+                    [class.border-t]="!primera"
+                    [class.border-line]="!primera"
+                  >
+                    <div class="flex flex-col items-center gap-1 pt-1">
+                      <span class="font-mono text-small text-muted">{{ fila.hora }}</span>
+                      @if (puedeAgregar(fila.hora)) {
+                        <button
+                          type="button"
+                          (click)="nuevoTurno(fila.hora)"
+                          [attr.aria-label]="'Crear un turno a las ' + fila.hora"
+                          class="flex size-6 items-center justify-center rounded-md text-accent hover:bg-accent-soft"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 5v14M5 12h14" />
+                          </svg>
+                        </button>
+                      }
+                    </div>
+
+                    <div class="flex min-h-10 flex-wrap gap-2">
+                      @for (turno of fila.turnos; track turno.id) {
+                        <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: turno }" />
+                      } @empty {
+                        @if (puedeAgregar(fila.hora)) {
+                          <!-- franja vacía: casi invisible hasta pasar el mouse, como en Horarios.
+                               Para el teclado y el lector de pantalla ya está el "+" de la fila,
+                               así que este queda fuera para no repetir el mismo botón -->
+                          <button
+                            type="button"
+                            tabindex="-1"
+                            aria-hidden="true"
+                            (click)="nuevoTurno(fila.hora)"
+                            class="flex min-h-10 flex-1 items-center rounded-card border border-dashed border-transparent px-3 text-small text-transparent hover:border-line-strong hover:text-faint"
+                          >
+                            Crear un turno a las {{ fila.hora }}
+                          </button>
+                        }
+                      }
+                    </div>
+
+                    <!-- línea de la hora actual: va a la altura de los minutos que pasaron de
+                         esta fila, por ejemplo a la mitad si van 15 de 30 -->
+                    @if (lineaAhora(); as linea) {
+                      @if (linea.fila === i) {
+                        <div
+                          aria-hidden="true"
+                          class="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
+                          [style.top.%]="linea.porcentaje"
+                        >
+                          <span class="-ml-1 size-2 rounded-full bg-accent"></span>
+                          <span class="h-px flex-1 bg-accent"></span>
+                        </div>
+                      }
+                    }
+                  </li>
+                }
+              </ul>
+            }
+
+            <!-- turnos sin fila: se achicó el horario del día después de que se crearon, así que
+                 se listan aparte para que no se pierdan -->
+            @if (turnosSinFila().length) {
+              <div class="mx-3.5 my-3 flex flex-col gap-2 rounded-card border border-line p-3">
+                <p class="text-small text-muted">Estos turnos quedan fuera del horario del día.</p>
+                <div class="flex flex-wrap gap-2">
+                  @for (turno of turnosSinFila(); track turno.id) {
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: turno }" />
+                  }
+                </div>
+              </div>
+            }
+
+            @if (!hayTurnos()) {
+              <p class="px-3.5 pb-3 text-small text-muted">
+                @if (filtro()) {
+                  No hay turnos de este profesional en el día.
+                } @else {
+                  No hay turnos cargados para este día.
+                }
+              </p>
+            }
+          }
+
+          <!-- leyenda de colores por estado -->
+          <div
+            class="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line px-3.5 py-2.5 text-small text-muted"
+          >
+            @for (item of leyenda; track item.estado) {
+              <span class="flex items-center gap-1.5">
+                <span aria-hidden="true" class="size-2 rounded-full" [class]="item.punto"></span>
+                {{ item.texto }}
+              </span>
+            }
+          </div>
+        </div>
+      </section>
+    }
+  }
+</div>
+
+<!-- tarjeta de un turno, con el color de su estado. Al tocarla se abre su detalle -->
+<ng-template #tarjeta let-turno>
+  <button
+    type="button"
+    (click)="verTurno(turno)"
+    [attr.aria-label]="
+      'Ver turno de ' +
+      horaDe(turno.startDatetime) +
+      ', ' +
+      (turno.clientName || 'libre') +
+      ', ' +
+      detalle(turno)
+    "
+    class="flex w-full flex-col gap-0.5 rounded-xl border px-2.5 py-2 text-left hover:border-fg-2 sm:w-48"
+    [class]="estilo(turno).tarjeta"
+  >
+    <div class="flex items-baseline justify-between gap-2">
+      <span class="font-mono text-small text-fg-2">
+        {{ horaDe(turno.startDatetime) }}–{{ horaDe(turno.endDatetime) }}
+      </span>
+      <!-- en los libres el estado ya está en el nombre, así que no se repite -->
+      @if (turno.status !== 'UNBOOKED') {
+        <span class="text-[11px] whitespace-nowrap text-muted">{{ estilo(turno).texto }}</span>
+      }
+    </div>
+    <span
+      class="truncate text-[13px] font-semibold"
+      [class]="turno.clientName ? 'text-fg' : 'text-fg-2'"
+      [class.line-through]="turno.status === 'CANCELLED'"
+    >
+      {{ turno.clientName || 'Libre' }}
+    </span>
+    <span class="truncate text-small text-muted">{{ detalle(turno) }}</span>
+  </button>
+</ng-template>
+
+@if (seleccionado(); as turno) {
+  <app-detalle-turno-dialogo
+    [turno]="turno"
+    [ahora]="ahora()"
+    (eliminado)="turnoEliminado($event)"
+    (cerrado)="seleccionado.set(null)"
+  />
+}
+
+@if (apertura(); as a) {
+  <app-nuevo-turno-dialogo
+    [businessId]="businessId"
+    [apertura]="a"
+    [servicios]="servicios()"
+    [equipo]="equipo()"
+    [turnosDelDia]="todosLosDelDia()"
+    (guardado)="turnoCreado($event)"
+    (cancelado)="apertura.set(null)"
+  />
+}

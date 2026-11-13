@@ -27,12 +27,12 @@
   </div>
 
   @if (!admin()) {
-    <button
-      type="button"
+    <a
+      routerLink="/panel/turnos"
       class="flex h-10 items-center justify-center rounded-control bg-accent font-semibold text-on-accent hover:bg-accent-hover"
     >
       + Nuevo turno
-    </button>
+    </a>
   }
 
   @for (grupo of grupos(); track $index) {

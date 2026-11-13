@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { AppointmentResponse } from '../../../core/models/turno';
 
-type Estado =
+export type Estado =
   'libre' | 'esperando' | 'confirmado' | 'en-curso' | 'terminado' | 'cancelado' | 'suspendido';
 
 const ESTADOS: Record<Estado, { texto: string; chip: string; punto: string }> = {
@@ -17,6 +17,32 @@ const ESTADOS: Record<Estado, { texto: string; chip: string; punto: string }> = 
   cancelado: { texto: 'Cancelado', chip: 'bg-surface-2 text-muted line-through', punto: 'bg-idle' },
   suspendido: { texto: 'Suspendido', chip: 'bg-info-soft text-info', punto: 'bg-info' },
 };
+
+// El estado que se le muestra al dueño. Sale del status del back, salvo en los BOOKED, que se
+// parten en confirmado, en curso y terminado comparando con la hora actual, porque el back no
+// tiene esos estados. Lo usa este chip y tambien las tarjetas de la Agenda, para pintarlas con
+// el mismo criterio. Por ejemplo un BOOKED de 10:00 a 10:30 a las 10:10 da en curso
+export function estadoDeTurno(
+  turno: Pick<AppointmentResponse, 'status' | 'startDatetime' | 'endDatetime'>,
+  ahora: Date = new Date(),
+): Estado {
+  switch (turno.status) {
+    case 'UNBOOKED':
+      return 'libre';
+    case 'AWAITING_PAYMENT':
+      return 'esperando';
+    case 'CANCELLED':
+      return 'cancelado';
+    case 'SUSPENDED':
+      return 'suspendido';
+    case 'BOOKED': {
+      const momento = ahora.getTime();
+      if (momento >= new Date(turno.endDatetime).getTime()) return 'terminado';
+      if (momento >= new Date(turno.startDatetime).getTime()) return 'en-curso';
+      return 'confirmado';
+    }
+  }
+}
 
 @Component({
   selector: 'app-estado-turno',
@@ -34,27 +60,9 @@ export class EstadoTurno {
   // se puede pasar para los tests; si no, se toma la hora del momento
   readonly ahora = input<Date>();
 
-  private readonly estado = computed<Estado>(() => {
-    const { status, startDatetime, endDatetime } = this.turno();
-
-    switch (status) {
-      case 'UNBOOKED':
-        return 'libre';
-      case 'AWAITING_PAYMENT':
-        return 'esperando';
-      case 'CANCELLED':
-        return 'cancelado';
-      case 'SUSPENDED':
-        return 'suspendido';
-      case 'BOOKED': {
-        // "en curso" y "terminado" no existen en el back: salen de comparar con la hora actual
-        const ahora = (this.ahora() ?? new Date()).getTime();
-        if (ahora >= new Date(endDatetime).getTime()) return 'terminado';
-        if (ahora >= new Date(startDatetime).getTime()) return 'en-curso';
-        return 'confirmado';
-      }
-    }
-  });
+  private readonly estado = computed<Estado>(() =>
+    estadoDeTurno(this.turno(), this.ahora() ?? new Date()),
+  );
 
   protected readonly estilo = computed(() => ESTADOS[this.estado()]);
 }
