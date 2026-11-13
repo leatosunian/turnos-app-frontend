@@ -179,7 +179,8 @@ export class MisTurnosPage implements OnInit {
 
   protected confirmarCancelar(): void {
     const turno = this.aCancelar();
-    if (!turno) return;
+    // el botón se deshabilita mientras cancela, pero se cuida igual de un segundo envío
+    if (!turno || this.cancelando()) return;
 
     this.cancelando.set(true);
     this.errorCancelar.set('');
