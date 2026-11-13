@@ -30,6 +30,8 @@ export interface AperturaNuevoTurno {
   // la hora de la fila, por ejemplo 10:00, y cuanto dura la fila en minutos
   hora: string;
   intervalo: number;
+  // la hora de cierre del dia (09:00 o 09:00:00): un turno no puede terminar despues
+  cierre: string;
   // si en la Agenda estaba filtrado un profesional, el turno arranca con ese elegido
   empleadoId: string | null;
 }
@@ -117,9 +119,14 @@ export class NuevoTurnoDialogo implements OnInit {
     return rangoDelTurno(this.apertura().clave, this.hora(), servicio.durationMinutes);
   });
 
+  // Si pasa de la medianoche el back la arma como 24:15; se muestra 00:15 del día siguiente
   protected readonly horaFin = computed(() => {
     const rango = this.rango();
-    return rango ? horaDe(rango.endDatetime) : '';
+    if (!rango) return '';
+    const fin = horaDe(rango.endDatetime);
+    if (fin < '24:00') return fin;
+    const [horas, minutos] = fin.split(':').map(Number);
+    return `${String(horas - 24).padStart(2, '0')}:${String(minutos).padStart(2, '0')} del día siguiente`;
   });
 
   // Si se pisa con otro turno del mismo profesional, el texto para avisarlo. Por ejemplo
@@ -134,6 +141,20 @@ export class NuevoTurnoDialogo implements OnInit {
     if (!otro) return null;
     const quien = otro.clientName ? `el turno de ${otro.clientName}` : 'un turno libre';
     return `Se pisa con ${quien} de ${horaDe(otro.startDatetime)} a ${horaDe(otro.endDatetime)}.`;
+  });
+
+  // Si con el servicio elegido el turno termina despues del cierre del dia, el texto para
+  // avisarlo. Por ejemplo a las 17:30 un servicio de 45 termina 18:15 y el dia cierra 18:00.
+  // Las fechas tienen el formato del back (2026-11-10T18:15:00), asi que se comparan como texto;
+  // un turno que pasa de la medianoche da 24:15 y tambien queda despues del cierre
+  protected readonly despuesDelCierre = computed(() => {
+    const rango = this.rango();
+    if (!rango) return null;
+    const cierre = this.apertura().cierre.slice(0, 5);
+    if (rango.endDatetime <= `${this.apertura().clave}T${cierre}:00`) return null;
+    const fin = horaDe(rango.endDatetime);
+    const termina = fin >= '24:00' ? 'Termina pasada la medianoche' : `Termina a las ${fin}`;
+    return `${termina} y el día cierra a las ${cierre}. Elegí una hora más temprana o un servicio más corto.`;
   });
 
   protected readonly errorNombre = computed(() => {
@@ -173,6 +194,7 @@ export class NuevoTurnoDialogo implements OnInit {
     if (
       !rango ||
       this.choque() ||
+      this.despuesDelCierre() ||
       this.errorNombre() ||
       this.errorEmail() ||
       this.errorTelefono() ||

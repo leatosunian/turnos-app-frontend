@@ -20,6 +20,8 @@ const APERTURA: AperturaNuevoTurno = {
   fecha: new Date(2026, 10, 16),
   hora: '10:00',
   intervalo: 30,
+  // como lo manda el back: con segundos
+  cierre: '18:00:00',
   empleadoId: null,
 };
 // el viernes anterior, asi todas las horas de la fila estan disponibles
@@ -154,6 +156,29 @@ describe('NuevoTurnoDialogo', () => {
     // a las 10:15 ya terminó el de Ana
     await elegir(selects()[0], '10:15');
     expect(el.textContent).not.toContain('Se pisa');
+  });
+
+  it('no deja crear un turno que termina después del cierre del día', async () => {
+    // fila de las 17:30 con cierre a las 18:00: el Corte de 45 terminaría 18:15
+    await abrir({ hora: '17:30' });
+    expect(el.textContent).toContain(
+      'Termina a las 18:15 y el día cierra a las 18:00. Elegí una hora más temprana o un servicio más corto.',
+    );
+    expect(el.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+    await enviar();
+    httpMock.expectNone(URL);
+
+    // la Barba de 30 termina justo a las 18:00: se puede
+    await elegir(selects()[1], 's-2');
+    expect(el.textContent).not.toContain('el día cierra');
+    expect(el.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  });
+
+  it('si el turno pasa la medianoche lo dice así y no con una hora 24', async () => {
+    await abrir({ hora: '23:30', cierre: '23:59:00' });
+    expect(el.textContent).toContain('Termina pasada la medianoche y el día cierra a las 23:59.');
+    expect(el.textContent).toContain('Termina a las 00:15 del día siguiente');
+    expect(el.textContent).not.toContain('24:');
   });
 
   it('arranca con el profesional del filtro de la agenda', async () => {
