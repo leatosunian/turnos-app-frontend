@@ -123,6 +123,15 @@ describe('AppointmentService', () => {
     expect(turnos).toEqual([TURNO]);
   });
 
+  it('porId pide un turno por su id', () => {
+    let resultado: AppointmentResponse | undefined;
+    service.porId('t-1').subscribe((t) => (resultado = t));
+    const req = httpMock.expectOne(`${URL}/appointments/t-1`);
+    expect(req.request.method).toBe('GET');
+    req.flush(TURNO);
+    expect(resultado).toEqual(TURNO);
+  });
+
   it('reservar hace POST a book con los datos del cliente', () => {
     const datos = { clientName: 'Federico Paz', clientEmail: 'fede@mail.com' };
     service.reservar('t-1', datos).subscribe();

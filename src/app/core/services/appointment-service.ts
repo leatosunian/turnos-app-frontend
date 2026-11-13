@@ -84,6 +84,15 @@ export class AppointmentService {
     return this.http.post<AppointmentResponse>(`${this.url}/appointments/${id}/book`, datos);
   }
 
+  /**
+   * Un turno por id. Es público: lo usa /reserva/:id para mostrar la reserva aunque se abra el
+   * link en otro dispositivo. Sin ser el cliente, el dueño o un admin, los datos del cliente
+   * vienen en null. 404 si no existe.
+   */
+  porId(id: string): Observable<AppointmentResponse> {
+    return this.http.get<AppointmentResponse>(`${this.url}/appointments/${id}`);
+  }
+
   /** Solo turnos BOOKED. Le devuelve la seña al cliente. */
   suspender(id: string): Observable<AppointmentResponse> {
     return this.http.put<AppointmentResponse>(`${this.url}/appointments/${id}/suspend`, null);

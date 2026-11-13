@@ -1,4 +1,53 @@
-@if (confirmado(); as t) {
+@switch (carga()) {
+  @case ('cargando') {
+    <p class="mx-auto max-w-360 px-4.5 py-10 text-muted lg:px-20 lg:py-16">Cargando tu reserva…</p>
+  }
+  @case ('no-encontrado') {
+    <app-no-encontrado-page />
+  }
+  @case ('error') {
+    <div
+      class="mx-auto flex max-w-140 flex-col items-center gap-4 px-4.5 py-10 text-center lg:py-16"
+    >
+      <h1 class="text-h1">No pudimos traer tu reserva</h1>
+      <p class="text-fg-2">Revisá tu conexión y probá de nuevo.</p>
+      <button appBoton variante="secundario" type="button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+  @case ('listo') {
+    @if (turno(); as turno) {
+      @switch (vista()) {
+        @case ('confirmado') {
+          <ng-container
+            [ngTemplateOutlet]="confirmacion"
+            [ngTemplateOutletContext]="{ $implicit: turno }"
+          />
+        }
+        @case ('inactiva') {
+          <div
+            class="mx-auto flex max-w-140 flex-col items-center gap-5 px-4.5 py-10 text-center lg:py-16"
+          >
+            <div class="flex flex-col gap-2">
+              <h1 class="text-h1">Esta reserva ya no está activa</h1>
+              <p class="text-fg-2">{{ motivoInactiva() }}</p>
+            </div>
+            <a appBoton grande [routerLink]="volverA()" class="w-full text-base">
+              {{ negocio() ? 'Reservar de nuevo en ' + negocio() : 'Volver al inicio' }}
+            </a>
+          </div>
+        }
+        @default {
+          <ng-container
+            [ngTemplateOutlet]="pago"
+            [ngTemplateOutletContext]="{ $implicit: turno }"
+          />
+        }
+      }
+    }
+  }
+}
+
+<ng-template #confirmacion let-t>
   <div class="mx-auto flex max-w-140 flex-col items-center gap-5 px-4.5 py-10 text-center lg:py-16">
     <span
       aria-hidden="true"
@@ -20,12 +69,14 @@
     <div class="flex flex-col gap-2">
       <h1 class="text-h1">Tu turno quedó confirmado</h1>
       <p class="text-fg-2">
-        Pagaste la seña{{ sena !== null ? ' de ' + (sena | monto) : '' }}.
-        @if (reserva) {
-          {{ reserva.negocio.name }} te espera el {{ t.startDatetime | fecha: 'corta' }} a las
-          <span class="font-mono">{{ t.startDatetime | hora }}</span
-          >.
+        @if (sena() === 0) {
+          Este servicio no pide seña.
+        } @else if (sena() !== null) {
+          Pagaste la seña de {{ sena() | monto }}.
         }
+        {{ negocio() ?? 'El negocio' }} te espera el {{ t.startDatetime | fecha: 'corta' }} a las
+        <span class="font-mono">{{ t.startDatetime | hora }}</span
+        >.
       </p>
     </div>
     <dl class="flex w-full flex-col gap-2 rounded-card bg-surface-1 p-4 text-left text-[13px]">
@@ -41,29 +92,37 @@
         <dt class="text-muted">Servicio</dt>
         <dd>{{ t.serviceName }}</dd>
       </div>
-      @if (enElLocal !== null) {
+      @if (enElLocal() !== null) {
         <div class="flex justify-between gap-3">
           <dt class="text-muted">Pagás en el local</dt>
-          <dd class="font-mono">{{ enElLocal | monto }}</dd>
+          <dd class="font-mono">{{ enElLocal() | monto }}</dd>
         </div>
       }
     </dl>
-    <a appBoton grande [routerLink]="volverA" class="w-full text-base">
-      {{ reserva ? 'Volver a ' + reserva.negocio.name : 'Volver al inicio' }}
+    <a appBoton grande [routerLink]="volverA()" class="w-full text-base">
+      {{ negocio() ? 'Volver a ' + negocio() : 'Volver al inicio' }}
     </a>
-    <p class="text-small text-muted">
-      Guardá estos datos. Para tener tus turnos en
-      <a routerLink="/mis-turnos" class="text-fg-2 underline hover:text-fg">Mis turnos</a>, reservá
-      con tu cuenta de cliente.
-    </p>
+    @if (esCliente()) {
+      <a routerLink="/mis-turnos" class="text-small text-fg-2 underline hover:text-fg">
+        Ver mis turnos
+      </a>
+    } @else {
+      <p class="text-small text-muted">
+        Guardá estos datos. Para tener tus turnos en
+        <a routerLink="/mis-turnos" class="text-fg-2 underline hover:text-fg">Mis turnos</a>,
+        reservá con tu cuenta de cliente.
+      </p>
+    }
   </div>
-} @else {
+</ng-template>
+
+<ng-template #pago let-t>
   <div class="mx-auto flex max-w-360 flex-col gap-5 px-4.5 py-4 lg:px-20 lg:py-12">
     <!-- Celular: volver, título y tiempo que queda -->
     <div class="flex flex-col gap-3 lg:hidden">
       <div class="flex items-center gap-3">
         <a
-          [routerLink]="volverA"
+          [routerLink]="volverA()"
           aria-label="Volver"
           class="flex size-10 items-center justify-center rounded-control border border-line bg-surface-1"
         >
@@ -82,7 +141,7 @@
           </svg>
         </a>
         <h1 class="font-semibold">Confirmá tu turno</h1>
-        @if (reserva) {
+        @if (reloj()) {
           <ng-container [ngTemplateOutlet]="relojTpl" />
         }
       </div>
@@ -105,64 +164,56 @@
           <h1 class="text-[44px] leading-12 font-semibold tracking-[-1.6px]">Confirmá tu turno</h1>
         </div>
 
-        @if (reserva && turno) {
-          <div
-            class="flex flex-col gap-3.5 rounded-container border border-line bg-surface-1 p-4.5 lg:gap-5 lg:p-6"
-          >
+        <div
+          class="flex flex-col gap-3.5 rounded-container border border-line bg-surface-1 p-4.5 lg:gap-5 lg:p-6"
+        >
+          @if (negocio()) {
             <div class="flex items-center gap-3 lg:gap-3.5">
               <span
                 aria-hidden="true"
                 class="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-surface-3 font-bold text-accent lg:size-13 lg:rounded-[14px]"
               >
-                {{ iniciales }}
+                {{ iniciales() }}
               </span>
-              <span class="font-semibold lg:text-lg">{{ reserva.negocio.name }}</span>
+              <span class="font-semibold lg:text-lg">{{ negocio() }}</span>
             </div>
-            <dl class="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-              <div
-                class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
+          }
+          <dl class="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+            <div
+              class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
+            >
+              <dt class="text-[11px] text-muted lg:text-small">Día</dt>
+              <dd
+                class="font-semibold first-letter:uppercase lg:font-mono lg:text-[17px] lg:font-normal"
               >
-                <dt class="text-[11px] text-muted lg:text-small">Día</dt>
-                <dd
-                  class="font-semibold first-letter:uppercase lg:font-mono lg:text-[17px] lg:font-normal"
-                >
-                  {{ turno.startDatetime | fecha: 'corta' }}
-                </dd>
-              </div>
-              <div
-                class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
-              >
-                <dt class="text-[11px] text-muted lg:text-small">Hora</dt>
-                <dd class="font-mono font-medium lg:text-[17px] lg:font-normal">
-                  {{ turno.startDatetime | hora }}
-                </dd>
-              </div>
-              <div
-                class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
-              >
-                <dt class="text-[11px] text-muted lg:text-small">Servicio</dt>
-                <dd class="font-semibold">{{ turno.serviceName }}</dd>
-              </div>
-              <div
-                class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
-              >
-                <dt class="text-[11px] text-muted lg:text-small">Profesional</dt>
-                <dd class="font-semibold">{{ turno.employeeName ?? 'A confirmar' }}</dd>
-              </div>
-            </dl>
-          </div>
-          <div class="hidden lg:block">
-            <ng-container [ngTemplateOutlet]="politica" />
-          </div>
-        } @else {
-          <div class="flex flex-col gap-1 rounded-card bg-surface-2 p-4">
-            <span class="font-semibold">No tenemos los datos de esta reserva</span>
-            <span class="text-small text-muted">
-              Si la hiciste desde otro dispositivo, podés pagar la seña igual. Si ya venció, reservá
-              de nuevo desde la página del negocio.
-            </span>
-          </div>
-        }
+                {{ t.startDatetime | fecha: 'corta' }}
+              </dd>
+            </div>
+            <div
+              class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
+            >
+              <dt class="text-[11px] text-muted lg:text-small">Hora</dt>
+              <dd class="font-mono font-medium lg:text-[17px] lg:font-normal">
+                {{ t.startDatetime | hora }}
+              </dd>
+            </div>
+            <div
+              class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
+            >
+              <dt class="text-[11px] text-muted lg:text-small">Servicio</dt>
+              <dd class="font-semibold">{{ t.serviceName }}</dd>
+            </div>
+            <div
+              class="flex flex-col gap-0.5 rounded-xl bg-app p-3 lg:gap-1 lg:bg-surface-2 lg:px-3.5"
+            >
+              <dt class="text-[11px] text-muted lg:text-small">Profesional</dt>
+              <dd class="font-semibold">{{ t.employeeName ?? 'A confirmar' }}</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="hidden lg:block">
+          <ng-container [ngTemplateOutlet]="politica" />
+        </div>
       </section>
 
       <aside
@@ -171,34 +222,34 @@
       >
         <div class="hidden items-center justify-between lg:flex">
           <span class="text-lg font-semibold">Resumen</span>
-          @if (reserva) {
+          @if (reloj()) {
             <ng-container [ngTemplateOutlet]="relojTpl" />
           }
         </div>
 
-        @if (turno && sena !== null) {
+        @if (sena() !== null) {
           <dl class="flex flex-col px-4.5 lg:gap-2.5 lg:px-0">
             <div class="flex justify-between border-b border-line py-2.5 lg:border-0 lg:py-0">
               <dt class="text-fg-2 lg:text-muted">Precio del servicio</dt>
-              <dd class="font-mono">{{ turno.price | monto }}</dd>
+              <dd class="font-mono">{{ t.price | monto }}</dd>
             </div>
             <div class="flex justify-between border-b border-line py-2.5 lg:border-0 lg:py-0">
               <dt class="text-fg-2 lg:text-muted">Pagás en el local</dt>
-              <dd class="font-mono">{{ enElLocal | monto }}</dd>
+              <dd class="font-mono">{{ enElLocal() | monto }}</dd>
             </div>
             <div
               class="flex items-baseline justify-between py-3.5 lg:border-t lg:border-line lg:pt-3 lg:pb-0"
             >
               <dt class="text-base font-semibold">Seña ahora</dt>
               <dd class="font-mono text-[26px] text-accent lg:text-[30px] lg:text-fg">
-                {{ sena | monto }}
+                {{ sena() | monto }}
               </dd>
             </div>
           </dl>
-          <div class="lg:hidden">
-            <ng-container [ngTemplateOutlet]="politica" />
-          </div>
         }
+        <div class="lg:hidden">
+          <ng-container [ngTemplateOutlet]="politica" />
+        </div>
 
         @if (vencida()) {
           <p
@@ -206,7 +257,7 @@
             class="rounded-card border border-danger-line bg-danger-soft p-4 text-small text-danger-fg"
           >
             Se venció el tiempo para pagar y el horario se liberó.
-            <a [routerLink]="volverA" class="font-medium underline">Reservá de nuevo</a>.
+            <a [routerLink]="volverA()" class="font-medium underline">Reservá de nuevo</a>.
           </p>
         }
         @if (error()) {
@@ -223,8 +274,8 @@
         >
           @if (pagando()) {
             Pagando…
-          } @else if (sena !== null) {
-            Pagar {{ sena | monto }}
+          } @else if (sena() !== null) {
+            Pagar {{ sena() | monto }}
           } @else {
             Pagar la seña
           }
@@ -236,7 +287,7 @@
       </aside>
     </div>
   </div>
-}
+</ng-template>
 
 <ng-template #relojTpl>
   <span
