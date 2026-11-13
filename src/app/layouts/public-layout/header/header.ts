@@ -1,6 +1,7 @@
 import { ViewportScroller } from '@angular/common';
 import { Component, ElementRef, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../../../core/services/auth-service';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
 import { accesosDeSesion } from '../accesos';
 
@@ -34,6 +35,12 @@ export class Header {
   // a donde van Ingresar y Mis turnos segun la sesion, ver accesos.ts
   protected readonly accesos = accesosDeSesion();
 
+  private readonly auth = inject(AuthService);
+
+  // Cerrar sesion solo aparece con sesion. Lo usa sobre todo el cliente, que no tiene el panel
+  // con su propio boton de salir: todas sus pantallas usan este header.
+  protected readonly logueado = this.auth.logueado;
+
   // Links a las secciones de la landing. Van con routerLink a la raiz mas el fragment, asi
   // funcionan tambien desde otra pagina: en /ingresar, Rubros lleva a /#rubros y baja hasta
   // la seccion (eso lo hace el anchorScrolling que esta prendido en app.config).
@@ -52,5 +59,10 @@ export class Header {
   // asi que el menu se quedaria abierto tapando la pagina.
   protected cerrarMenu(): void {
     this.menuAbierto.set(false);
+  }
+
+  protected cerrarSesion(): void {
+    this.cerrarMenu();
+    this.auth.cerrarSesion();
   }
 }

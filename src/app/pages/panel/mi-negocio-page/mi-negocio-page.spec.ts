@@ -9,7 +9,7 @@ import { environment } from '../../../../environments/environment';
 import { errorInterceptor } from '../../../core/interceptors/error-interceptor';
 import { BusinessResponse, BusinessTypeResponse } from '../../../core/models/negocio';
 import { ServResponse } from '../../../core/models/servicio';
-import { DIAS_A_GENERAR, MiNegocioPage } from './mi-negocio-page';
+import { DIAS_A_GENERAR, MAX_RUBROS, MiNegocioPage } from './mi-negocio-page';
 
 registerLocaleData(localeEsAr);
 
@@ -19,6 +19,7 @@ const RUBROS: BusinessTypeResponse[] = [
   { id: 'r-pelu', name: 'Peluquería', deleted: false },
   { id: 'r-barba', name: 'Barbería', deleted: false },
   { id: 'r-spa', name: 'Spa', deleted: false },
+  { id: 'r-unias', name: 'Uñas', deleted: false },
 ];
 
 function negocio(cambios: Partial<BusinessResponse> = {}): BusinessResponse {
@@ -207,6 +208,35 @@ describe('MiNegocioPage', () => {
     httpMock
       .expectOne(`${API}/businesses/n-1/types/r-spa`)
       .flush(negocio({ businessTypes: [RUBROS[0], RUBROS[2]] }));
+  });
+
+  it(`no deja elegir más de ${MAX_RUBROS} rubros`, async () => {
+    await cargar(negocio());
+    chip('Barbería').click();
+    await refrescar();
+    chip('Spa').click();
+    await refrescar();
+
+    expect(chip('Uñas').disabled).toBe(true);
+    expect(el.textContent).toContain(`3/${MAX_RUBROS}`);
+
+    // destildar uno vuelve a habilitar los demás
+    chip('Spa').click();
+    await refrescar();
+    expect(chip('Uñas').disabled).toBe(false);
+  });
+
+  it('si ya tenía más rubros que el tope, pide sacar alguno antes de guardar', async () => {
+    await cargar(negocio({ businessTypes: RUBROS }));
+    await escribir('nombre', 'Otro nombre');
+
+    boton('Guardar')!.click();
+    await refrescar();
+
+    httpMock.expectNone(`${API}/businesses/n-1`);
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      `Elegí hasta ${MAX_RUBROS} rubros`,
+    );
   });
 
   it('muestra el error del back al guardar', async () => {

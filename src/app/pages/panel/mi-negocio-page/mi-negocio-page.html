@@ -195,7 +195,10 @@
           </div>
 
           <fieldset class="flex flex-col gap-2">
-            <legend class="pb-2 text-small text-muted">Rubros</legend>
+            <legend class="flex w-full justify-between pb-2 text-small text-muted">
+              <span>Rubros · elegí hasta {{ maxRubros }}</span>
+              <span class="font-mono">{{ rubrosElegidos().size }}/{{ maxRubros }}</span>
+            </legend>
             @if (rubrosVisibles().length) {
               <div class="flex flex-wrap gap-1.5 lg:gap-2">
                 @for (rubro of rubrosVisibles(); track rubro.id) {
@@ -203,12 +206,13 @@
                   <button
                     type="button"
                     [attr.aria-pressed]="elegido"
+                    [disabled]="!elegido && topeDeRubros()"
                     (click)="alternarRubro(rubro.id)"
-                    class="flex h-8 items-center rounded-full border px-3 text-[13px] lg:text-body"
+                    class="flex h-8 items-center rounded-full border px-3 text-[13px] disabled:cursor-not-allowed disabled:opacity-40 lg:text-body"
                     [class]="
                       elegido
                         ? 'border-accent/30 bg-accent-soft text-accent'
-                        : 'border-line-strong text-fg-2 hover:text-fg'
+                        : 'border-line-strong text-fg-2 enabled:hover:text-fg'
                     "
                   >
                     @if (elegido) {
