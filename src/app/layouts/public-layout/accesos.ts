@@ -15,6 +15,9 @@ import { AuthService } from '../../core/services/auth-service';
 // - veMisTurnos: el link se muestra sin sesion (el guard lo manda a ingresar y despues vuelve)
 //   o si el usuario es cliente. A un dueño, empleado o admin no se lo mostramos, porque no
 //   tiene turnos sacados como cliente.
+// - veIngresar: se oculta solo si hay sesion y la pantalla de su rol es /mis-turnos (un
+//   cliente). Ahi Ingresar lo llevaria a Mis turnos, que ya esta como link propio. A un dueño o
+//   admin se le deja, porque es su acceso al panel. Si tiene CLIENT y OWNER, su ruta es /panel.
 //
 // Tiene que llamarse en el constructor o en la declaracion de un campo, porque usa inject().
 export function accesosDeSesion() {
@@ -22,5 +25,6 @@ export function accesosDeSesion() {
   return {
     rutaIngresar: computed(() => (auth.logueado() ? auth.rutaInicial() : '/ingresar')),
     veMisTurnos: computed(() => !auth.logueado() || auth.tieneRol(['CLIENT'])),
+    veIngresar: computed(() => !auth.logueado() || auth.rutaInicial() !== '/mis-turnos'),
   };
 }

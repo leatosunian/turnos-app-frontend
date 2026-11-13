@@ -46,18 +46,32 @@
     </div>
 
     <div class="ml-auto flex items-center gap-5 text-fg-2">
+      <!-- Sin sesion, Mis turnos solo entra en pantallas anchas. Un cliente logueado no ve
+           Ingresar, asi que Mis turnos queda en su lugar en todos los tamaños. -->
       @if (accesos.veMisTurnos()) {
         <a
           routerLink="/mis-turnos"
           routerLinkActive="text-fg"
-          class="hidden hover:text-accent xl:block"
+          class="hover:text-accent"
+          [class]="accesos.veIngresar() ? 'hidden xl:block' : 'block'"
         >
           Mis turnos
         </a>
       }
-      <a [routerLink]="accesos.rutaIngresar()" routerLinkActive="text-fg" class="hover:text-accent">
-        Ingresar
-      </a>
+      @if (accesos.veIngresar()) {
+        <a
+          [routerLink]="accesos.rutaIngresar()"
+          routerLinkActive="text-fg"
+          class="hover:text-accent"
+        >
+          Ingresar
+        </a>
+      }
+      @if (logueado()) {
+        <button type="button" (click)="cerrarSesion()" class="hidden hover:text-accent lg:block">
+          Cerrar sesión
+        </button>
+      }
       <a
         routerLink="/ingresar"
         [queryParams]="{ modo: 'crear' }"
@@ -123,6 +137,15 @@
         >
           ¿Sos cliente? Consultá tus turnos
         </a>
+      }
+      @if (logueado()) {
+        <button
+          type="button"
+          (click)="cerrarSesion()"
+          class="block w-full border-t border-line py-3.5 text-left text-fg-2 hover:text-accent"
+        >
+          Cerrar sesión
+        </button>
       }
       <a
         routerLink="/ingresar"
