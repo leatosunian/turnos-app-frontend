@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResponse, Pagina, aPagina } from '../models/pagina';
-import { AppointmentResponse, AppointmentStatus, BookAppointmentRequest } from '../models/turno';
+import {
+  AppointmentResponse,
+  AppointmentStatus,
+  BookAppointmentRequest,
+  CreateAppointmentRequest,
+} from '../models/turno';
 
 export interface FiltroTurnos {
   /** Sin estado trae todos. */
@@ -50,6 +55,15 @@ export class AppointmentService {
   deHoy(businessId: string): Observable<AppointmentResponse[]> {
     return this.http.get<AppointmentResponse[]>(
       `${this.url}/businesses/${businessId}/appointments/today`,
+    );
+  }
+
+  // Crea un turno suelto desde la Agenda, libre o a nombre de un cliente. Solo OWNER y ADMIN.
+  // El back lo marca como manual, asi que regenerar la agenda no lo borra
+  crear(businessId: string, datos: CreateAppointmentRequest): Observable<AppointmentResponse> {
+    return this.http.post<AppointmentResponse>(
+      `${this.url}/businesses/${businessId}/appointments`,
+      datos,
     );
   }
 

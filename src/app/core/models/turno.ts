@@ -47,6 +47,23 @@ export interface BookAppointmentRequest {
   clientPhone?: string;
 }
 
+// Lo que manda la Agenda del panel para crear un turno en un dia y hora puntual, fuera de la
+// plantilla semanal. El fin no se manda: el back le suma la duracion del servicio.
+// Sin datos del cliente el turno queda libre y se publica; con el nombre (y si quiere el email
+// y el telefono) queda reservado a nombre de esa persona y sin seña, por ejemplo alguien que
+// pidio turno por telefono. Los vacios el back los toma como no enviados.
+// Responde 409 si se pisa con otro del mismo profesional y 400 si la hora ya paso.
+export interface CreateAppointmentRequest {
+  // sin zona, como las demas fechas del back, por ejemplo 2026-11-16T10:00:00
+  startDatetime: string;
+  serviceId: string;
+  // null es sin asignar
+  employeeId?: string | null;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+}
+
 /**
  * Solo se suspenden turnos reservados que todavía no terminaron (Confirmado o En curso).
  * El back deja suspender cualquier BOOKED, pero en uno terminado le devolvería la seña al cliente.
