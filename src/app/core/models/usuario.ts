@@ -8,8 +8,8 @@ export interface UserResponse {
   active: boolean;
   roles: RoleName[];
   /**
-   * Negocio en el que trabaja un EMPLOYEE. Pedido al back para Mi actividad (TA-29): hoy
-   * /auth/me no lo trae y un EMPLOYEE no puede pedir /businesses/mine.
+   * Negocio en el que trabaja un EMPLOYEE (lo trae /auth/me; un EMPLOYEE no puede pedir
+   * /businesses/mine). Lo usa Mi actividad. Para los demás roles viene null.
    */
   businessId?: string | null;
   businessName?: string | null;

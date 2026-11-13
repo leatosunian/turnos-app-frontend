@@ -86,6 +86,24 @@ describe('errorInterceptor', () => {
     expect(cerrarSesion).toHaveBeenCalled();
   });
 
+  it('un 403 no cierra la sesión: es falta de permiso, no sesión vencida', () => {
+    const url = `${environment.apiUrl}/businesses/n-2`;
+    const errores: ApiError[] = [];
+    http.get(url).subscribe({ error: (e: ApiError) => errores.push(e) });
+    httpMock
+      .expectOne(url)
+      .flush(
+        { status: 403, message: 'No tenés permiso para gestionar este negocio' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+
+    expect(cerrarSesion).not.toHaveBeenCalled();
+    expect(errores[0]).toEqual({
+      status: 403,
+      message: 'No tenés permiso para gestionar este negocio',
+    });
+  });
+
   it('un 401 del login no cierra la sesión ni redirige', () => {
     const url = `${environment.apiUrl}/auth/login`;
     const errores: ApiError[] = [];
