@@ -61,12 +61,56 @@
         aria-labelledby="titulo-atencion"
         class="flex flex-col gap-4 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:p-5"
       >
-        <div class="flex flex-col gap-1">
-          <h2 id="titulo-atencion" class="text-lg font-semibold">Horario de atención</h2>
-          <p class="text-fg-2">
-            Para cada día elegí el horario y cargá los turnos que querés ofrecer.
-          </p>
+        <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div class="flex flex-col gap-1">
+            <h2 id="titulo-atencion" class="text-lg font-semibold">Horario de atención</h2>
+            <p class="text-fg-2">
+              Para cada día elegí el horario y cargá los turnos que querés ofrecer.
+            </p>
+          </div>
+          <button appBoton variante="secundario" type="button" (click)="abrirLote()">
+            Asignar en lote
+          </button>
         </div>
+
+        <!-- resultado del ultimo lote, hasta que el dueño lo cierre -->
+        @if (avisoLote(); as aviso) {
+          <div
+            role="status"
+            class="flex items-start gap-2.5 rounded-card border px-3.5 py-2.5 text-small"
+            [class]="
+              aviso.ok
+                ? 'border-success-line bg-success-soft text-fg'
+                : 'border-danger-line bg-danger-soft text-fg'
+            "
+          >
+            <span
+              aria-hidden="true"
+              class="mt-1.5 size-2 shrink-0 rounded-full"
+              [class]="aviso.ok ? 'bg-success' : 'bg-danger'"
+            ></span>
+            <p class="flex-1">{{ aviso.texto }}</p>
+            <button
+              type="button"
+              (click)="avisoLote.set(null)"
+              aria-label="Cerrar aviso"
+              class="-m-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted hover:text-fg"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        }
 
         <p class="rounded-card border border-accent-line bg-accent-soft px-3.5 py-2.5 text-fg-2">
           Esta es tu <span class="font-semibold text-fg">plantilla semanal</span>: los turnos se
@@ -521,6 +565,19 @@
     (guardado)="turnoGuardado($event)"
     (eliminar)="pedirBaja($event)"
     (cancelado)="cerrarDialogo()"
+  />
+}
+
+@if (loteAbierto()) {
+  <app-lote-dialogo
+    [businessId]="negocio()!.id"
+    [semana]="semana()"
+    [servicios]="servicios()"
+    [equipo]="equipo()"
+    [plantilla]="plantilla()"
+    [diaInicial]="diaElegido()"
+    (terminado)="loteTerminado($event)"
+    (cancelado)="loteAbierto.set(false)"
   />
 }
 

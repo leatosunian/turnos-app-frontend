@@ -38,6 +38,7 @@ import {
   erroresDeAgenda,
   horaCorta,
   mensajeDeGeneracion,
+  mensajeDeLote,
   opcionesDeHora,
   ordenarSemana,
   pedidoDeNegocio,
@@ -45,6 +46,7 @@ import {
   tonoDeProfesional,
   turnosPorSemana,
 } from './horarios';
+import { FinDeLote, LoteDialogo } from './lote-dialogo/lote-dialogo';
 import { AperturaTurno, TurnoDialogo } from './turno-dialogo/turno-dialogo';
 
 type EstadoCarga = 'cargando' | 'listo' | 'sin-negocio' | 'error';
@@ -89,6 +91,7 @@ function aEntero(valor: string): number {
     MontoPipe,
     NgTemplateOutlet,
     RouterLink,
+    LoteDialogo,
     TurnoDialogo,
   ],
   selector: 'app-horarios-page',
@@ -128,6 +131,9 @@ export class HorariosPage implements OnInit {
 
   // El dialogo de alta o edicion de un turno programado, con lo que necesita para abrirse
   protected readonly apertura = signal<AperturaTurno | null>(null);
+  protected readonly loteAbierto = signal(false);
+  // el aviso verde (o rojo si algo fallo) que deja el lote al terminar
+  protected readonly avisoLote = signal<{ ok: boolean; texto: string } | null>(null);
   protected readonly baja = signal<AppointmentScheduleResponse | null>(null);
   protected readonly procesandoBaja = signal(false);
   protected readonly errorBaja = signal('');
@@ -390,6 +396,22 @@ export class HorariosPage implements OnInit {
 
   protected cerrarDialogo(): void {
     this.apertura.set(null);
+  }
+
+  protected abrirLote(): void {
+    this.avisoLote.set(null);
+    this.loteAbierto.set(true);
+  }
+
+  // Suma a la grilla los turnos que creo el lote y deja el aviso con lo que paso. Es rojo solo
+  // si el back rechazo alguno o si no se creo nada; los salteados de la vista previa ya los vio
+  protected loteTerminado({ creados, resultado }: FinDeLote): void {
+    this.plantilla.update((lista) => [...lista, ...creados]);
+    this.avisoLote.set({
+      ok: resultado.fallidos === 0 && resultado.creados > 0,
+      texto: mensajeDeLote(resultado, !!this.negocio()?.automaticSchedule),
+    });
+    this.loteAbierto.set(false);
   }
 
   protected turnoGuardado(turno: AppointmentScheduleResponse): void {
