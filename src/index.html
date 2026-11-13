@@ -11,6 +11,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Loader de pantalla completa. Esta aca y no en un componente para que se vea apenas abre
+       la pagina, antes de que termine de bajar Angular. Lo saca CargadorService cuando la app
+       ya tiene algo para mostrar. Los estilos estan en styles.css (clases cargador). -->
+  <div id="cargador" class="cargador" role="status" aria-label="Cargando TurnosApp">
+    <div class="cargador-logo">
+      <svg width="44" height="44" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="1" y="1" width="24" height="24" rx="7" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M8 13h10M13 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span>TurnosApp</span>
+    </div>
+  </div>
   <app-root></app-root>
 </body>
 </html>

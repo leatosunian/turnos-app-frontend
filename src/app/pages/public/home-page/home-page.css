@@ -1,0 +1,213 @@
+/* Fondo animado de la portada. Va en una capa absoluta detras del contenido: el z-index -1
+   lo manda atras del texto, y el isolate de la seccion hace que no se vaya detras del body.
+
+   Son tres capas, de atras para adelante:
+   1. en ::before, una grilla de lineas finas, como las filas y columnas de una agenda, que
+      solo se ve dentro del cono de luz de arriba;
+   2. en el span fondo-luces, tres luces calidas desenfocadas (coral, ambar y ambar claro);
+   3. en ::after, un haz de luz ambar que baja desde arriba, como un foco.
+
+   Cada capa se mueve sola y a otro ritmo: la grilla baja, las luces se desplazan y el haz
+   sube y baja de intensidad. Como los tiempos no coinciden (9, 16 y 6 segundos), el conjunto
+   casi nunca se ve igual. Solo animamos transform, opacity y background-position, que el
+   navegador resuelve sin recalcular el layout, asi no se pone pesado.
+
+   En el celular el cono y la grilla quedan arriba al centro, detras del titulo. En desktop
+   se corren hacia la tarjeta (62 % del ancho) y las luces la rodean. */
+.fondo-portada {
+  /* cuanto baja la grilla en cada vuelta. Tiene que ser igual al tamaño de la celda, si no
+     al volver a empezar se ve un salto: 48 px en el celular y 56 en desktop */
+  --paso: 48px;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fondo-portada::before,
+.fondo-portada::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* La grilla. Son dos degradados que en realidad no degradan nada: cada uno pinta 1 px de
+   linea y el resto transparente, y como se repiten cada 48 px queda una cuadricula.
+   La mascara radial la va borrando fuera del cono de luz. */
+.fondo-portada::before {
+  background-image:
+    linear-gradient(to right, var(--color-line-strong) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-line-strong) 1px, transparent 1px);
+  background-size: var(--paso) var(--paso);
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 50% 75% at 50% -5%, #000 15%, transparent 80%);
+  animation: avanzar 9s linear infinite;
+}
+
+/* El haz de luz. Arranca un poco arriba de la seccion (-10 %) para que no se vea el centro
+   de la elipse, solo la luz que cae. */
+.fondo-portada::after {
+  background: radial-gradient(
+    ellipse 45% 70% at 50% -10%,
+    color-mix(in srgb, var(--color-accent) 16%, transparent),
+    transparent 70%
+  );
+  animation: respirar 6s ease-in-out infinite alternate;
+}
+
+/* Las luces van en un span aparte porque el div y sus dos pseudoelementos ya estan usados.
+   Es mas grande que la seccion (inset -15 %) para que al moverse no se le vean los bordes,
+   y el blur de 50 px las deja como manchas de luz sin forma. */
+.fondo-luces {
+  position: absolute;
+  inset: -15%;
+  background:
+    radial-gradient(
+      circle at 20% 40%,
+      color-mix(in srgb, var(--color-danger) 11%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 82% 35%,
+      color-mix(in srgb, var(--color-accent-hover) 10%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 55% 85%,
+      color-mix(in srgb, var(--color-accent) 9%, transparent),
+      transparent 30%
+    );
+  filter: blur(50px);
+  animation: deriva 16s ease-in-out infinite alternate;
+}
+
+@media (width >= 64rem) {
+  .fondo-portada {
+    --paso: 56px;
+  }
+
+  .fondo-portada::before {
+    mask-image: radial-gradient(ellipse 45% 85% at 62% -5%, #000 15%, transparent 80%);
+  }
+
+  .fondo-portada::after {
+    background: radial-gradient(
+      ellipse 38% 80% at 62% -10%,
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 70%
+    );
+  }
+
+  .fondo-luces {
+    background:
+      radial-gradient(
+        circle at 12% 80%,
+        color-mix(in srgb, var(--color-danger) 10%, transparent),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at 92% 30%,
+        color-mix(in srgb, var(--color-accent-hover) 11%, transparent),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at 72% 85%,
+        color-mix(in srgb, var(--color-accent) 10%, transparent),
+        transparent 28%
+      );
+  }
+}
+
+/* la grilla baja una celda entera y vuelve a empezar, como una agenda que avanza */
+@keyframes avanzar {
+  from {
+    background-position: center 0;
+  }
+  to {
+    background-position: center var(--paso);
+  }
+}
+
+/* el haz sube y baja de intensidad, va y vuelve gracias al alternate */
+@keyframes respirar {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* las luces se corren un 4 % para cada lado y giran apenas */
+@keyframes deriva {
+  from {
+    transform: translate(-4%, -2%) rotate(0deg);
+  }
+  to {
+    transform: translate(4%, 3%) rotate(8deg);
+  }
+}
+
+/* ---------- grilla de la tarjeta Agenda automatica ---------- */
+
+/* La ventana muestra solo tres semanas y esconde el resto. --fila es lo que mide una semana
+   contando el espacio que la separa de la siguiente: en el celular la celda mide 26 px y el
+   espacio 5, asi que 31; en desktop 34 mas 6, asi que 40. El alto de la ventana son tres filas
+   menos un espacio, porque despues de la ultima semana no hay hueco. La mascara apaga un poco
+   arriba y abajo, asi la semana que entra y la que sale aparecen y se van suaves. */
+.ventana-agenda {
+  --fila: 31px;
+  --hueco: 5px;
+  height: calc(var(--fila) * 3 - var(--hueco));
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+}
+
+/* La pista tiene seis semanas (las tres de la tarjeta dos veces) y sube de a una cada 3
+   segundos. Entre paso y paso se queda quieta un rato, para que se lea como "paso una noche y
+   se agrego una semana". Al llegar a tres semanas vuelve a 0, que se ve igual, ver
+   celdasAnimadas en el ts. */
+.pista-agenda {
+  animation: semanas 9s ease-in-out infinite;
+}
+
+@media (width >= 64rem) {
+  .ventana-agenda {
+    --fila: 40px;
+    --hueco: 6px;
+  }
+}
+
+@keyframes semanas {
+  0%,
+  22% {
+    transform: translateY(0);
+  }
+  33%,
+  55% {
+    transform: translateY(calc(var(--fila) * -1));
+  }
+  66%,
+  88% {
+    transform: translateY(calc(var(--fila) * -2));
+  }
+  100% {
+    transform: translateY(calc(var(--fila) * -3));
+  }
+}
+
+/* el turno que se esta atendiendo late suave, como el punto de "ahora" del panel */
+.celda-ahora {
+  animation: latido 2.4s ease-in-out infinite;
+}
+
+@keyframes latido {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}

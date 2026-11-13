@@ -1,7 +1,5 @@
 <footer class="border-t border-line">
-  <div
-    class="mx-auto grid max-w-360 gap-8 px-5 py-8 lg:grid-cols-[1.6fr_3fr] lg:gap-16 lg:px-20 lg:py-14"
-  >
+  <div class="contenedor grid gap-8 py-8 lg:grid-cols-[1.6fr_3fr] lg:gap-12 lg:py-14 xl:gap-16">
     <div class="flex flex-col gap-5">
       <div class="flex flex-col gap-2.5">
         <a
@@ -35,7 +33,7 @@
           TurnosApp
         </a>
         <p class="max-w-80 text-small text-muted">
-          Turnos online con seña para negocios que atienden con hora.
+          Turnos online con seña para negocios que atienden por turno.
         </p>
       </div>
 
@@ -55,7 +53,7 @@
     </div>
 
     <div class="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3">
-      @for (columna of columnas; track columna.titulo) {
+      @for (columna of columnas(); track columna.titulo) {
         <div class="flex flex-col gap-2.5">
           <span class="text-body font-medium text-faint">{{ columna.titulo }}</span>
           @for (link of columna.links; track link.texto) {
@@ -85,7 +83,7 @@
 
   <div class="border-t border-line">
     <div
-      class="mx-auto flex max-w-360 flex-col gap-1 px-5 py-4 text-small text-muted sm:flex-row sm:justify-between lg:px-20"
+      class="contenedor flex flex-col gap-1 py-4 text-small text-muted sm:flex-row sm:justify-between"
     >
       <span>© {{ anio }} TurnosApp</span>
       <span>Grupo 8 · UTN</span>
