@@ -4,6 +4,9 @@ import {
   aMinutos,
   armarGrilla,
   armarLote,
+  enumerar,
+  mensajeDeLote,
+  resumirHorarios,
   errorDeTurno,
   horariosDelRango,
   opcionesDeHora,
@@ -215,6 +218,54 @@ describe('horarios', () => {
       expect(aCrear.map((t) => t.startTime)).toEqual(['10:00', '11:00']);
       expect(choques.map((t) => t.startTime)).toEqual(['10:30']);
     });
+
+    it('deja afuera los que no entran en el horario de su dia', () => {
+      // el lunes abre a las 10 y el miercoles recien a las 10:30
+      const semana = [
+        dia({ day: 'LUN', dayStart: '10:00:00', dayEnd: '20:00:00' }),
+        dia({ day: 'MAR' }),
+        dia({ day: 'MIE', dayStart: '10:30:00', dayEnd: '20:00:00' }),
+      ];
+      const { aCrear, fueraDeHorario } = armarLote(pedido, [], semana);
+      expect(aCrear.map((t) => `${t.dayNumber} ${t.startTime}`)).toEqual([
+        '0 10:00',
+        '0 10:45',
+        '2 10:45',
+      ]);
+      expect(fueraDeHorario.map((t) => `${t.dayNumber} ${t.startTime}`)).toEqual(['2 10:00']);
+    });
+  });
+
+  it('enumerar une las palabras con comas y una y al final', () => {
+    expect(enumerar([])).toBe('');
+    expect(enumerar(['lunes'])).toBe('lunes');
+    expect(enumerar(['lunes', 'martes'])).toBe('lunes y martes');
+    expect(enumerar(['lunes', 'martes', 'miércoles'])).toBe('lunes, martes y miércoles');
+  });
+
+  it('resumirHorarios nombra los primeros y cuenta el resto', () => {
+    const lote = ['10:00', '10:45', '11:30', '12:15', '13:00'].map((startTime) => ({
+      dayNumber: 1,
+      startTime,
+      endTime: '14:00',
+      serviceId: 's-1',
+      employeeId: null,
+    }));
+    expect(resumirHorarios(lote.slice(0, 2))).toBe('mar 10:00 y mar 10:45');
+    expect(resumirHorarios(lote)).toBe('mar 10:00, mar 10:45, mar 11:30 y 2 más');
+  });
+
+  it('mensajeDeLote cuenta lo creado, lo salteado y lo que fallo', () => {
+    const base = { creados: 10, choques: 0, fueraDeHorario: 0, fallidos: 0 };
+    expect(mensajeDeLote({ ...base, choques: 2 }, true)).toBe(
+      'Se crearon 10 turnos programados. 2 se saltearon porque se superponían. La agenda ya los está generando desde hoy.',
+    );
+    expect(mensajeDeLote({ ...base, creados: 1, fueraDeHorario: 1 }, false)).toBe(
+      'Se creó 1 turno programado. 1 se salteó porque quedaba fuera del horario. Se publican cuando prendas la agenda automática.',
+    );
+    expect(mensajeDeLote({ ...base, creados: 0, fallidos: 3 }, true)).toBe(
+      'No se creó ningún turno programado. 3 no se pudieron guardar, probá de nuevo.',
+    );
   });
 
   it('turnosPorSemana cuenta solo los turnos de los dias abiertos', () => {

@@ -225,15 +225,26 @@ export function horariosDelRango(
 // existentes: los turnos programados que ya estan guardados
 // Tambien se revisan contra los del mismo lote, porque si cada es menor que la duracion (cada
 // 30 con un servicio de 45) se pisarian entre ellos y el back rechazaria la mitad.
+// semana: los 7 dias ordenados de lunes a domingo. Como cada dia puede tener otro horario, los
+// turnos que caen fuera del horario de su dia van en fueraDeHorario y tampoco se mandan. Por
+// ejemplo de 10:00 a 13:00 entra entero un lunes de 10 a 20, pero un martes que abre a las 11
+// pierde los de las 10:00 y 10:45
 export function armarLote(
   pedido: PedidoLote,
   existentes: Rango[],
-): { aCrear: AppointmentScheduleRequest[]; choques: AppointmentScheduleRequest[] } {
+  semana: DayScheduleResponse[] = [],
+): {
+  aCrear: AppointmentScheduleRequest[];
+  choques: AppointmentScheduleRequest[];
+  fueraDeHorario: AppointmentScheduleRequest[];
+} {
   const aCrear: AppointmentScheduleRequest[] = [];
   const choques: AppointmentScheduleRequest[] = [];
+  const fueraDeHorario: AppointmentScheduleRequest[] = [];
   const horarios = horariosDelRango(pedido.desde, pedido.hasta, pedido.cada, pedido.duracion);
   // ordenamos los dias para que la vista previa y los pedidos vayan de lunes a domingo
   for (const dayNumber of [...pedido.dias].sort((a, b) => a - b)) {
+    const dia = semana[dayNumber];
     for (const inicio of horarios) {
       const turno: AppointmentScheduleRequest = {
         dayNumber,
@@ -242,11 +253,82 @@ export function armarLote(
         serviceId: pedido.serviceId,
         employeeId: pedido.employeeId,
       };
+      const afuera =
+        !!dia?.dayStart &&
+        !!dia.dayEnd &&
+        (aMinutos(turno.startTime) < aMinutos(dia.dayStart) ||
+          aMinutos(turno.endTime) > aMinutos(dia.dayEnd));
+      if (afuera) {
+        fueraDeHorario.push(turno);
+        continue;
+      }
       const choca = [...existentes, ...aCrear].some((otro) => seSuperponen(turno, otro));
       (choca ? choques : aCrear).push(turno);
     }
   }
-  return { aCrear, choques };
+  return { aCrear, choques, fueraDeHorario };
+}
+
+// Une palabras como se dice en castellano: lunes y martes, o lunes, martes y miercoles.
+// Va en la vista previa del lote para nombrar los dias elegidos
+export function enumerar(palabras: string[]): string {
+  if (palabras.length <= 1) return palabras.join('');
+  return `${palabras.slice(0, -1).join(', ')} y ${palabras[palabras.length - 1]}`;
+}
+
+// Nombra algunos turnos del lote en corto para los avisos de la vista previa, con el dia y la
+// hora. Si son mas de max, nombra los primeros y cuenta el resto. Por ejemplo con 5 turnos y
+// max 3 da "mar 10:00, mar 10:45, mié 10:00 y 2 más"
+export function resumirHorarios(turnos: AppointmentScheduleRequest[], max = 3): string {
+  const nombres = turnos
+    .slice(0, max)
+    .map((turno) => `${DIAS[turno.dayNumber].corto.toLowerCase()} ${horaCorta(turno.startTime)}`);
+  const resto = turnos.length - max;
+  return resto > 0 ? `${nombres.join(', ')} y ${resto} más` : enumerar(nombres);
+}
+
+// Lo que salio del lote, para el aviso que queda en la pantalla al cerrar el dialogo
+export interface ResultadoLote {
+  creados: number;
+  // los que la vista previa ya habia dejado afuera
+  choques: number;
+  fueraDeHorario: number;
+  // los que el back rechazo al mandarlos, por ejemplo un 409 si mientras tanto alguien cargo
+  // otro turno en ese horario desde otra pestaña
+  fallidos: number;
+}
+
+// El texto del aviso del lote. Por ejemplo con 10 creados y 2 choques, y la agenda prendida, da
+// "Se crearon 10 turnos programados. 2 se saltearon porque se superponían. La agenda ya los
+// está generando desde hoy."
+// agendaAutomatica: cambia la ultima frase, porque con la agenda apagada no se publica nada
+export function mensajeDeLote(resultado: ResultadoLote, agendaAutomatica: boolean): string {
+  const { creados, choques, fueraDeHorario, fallidos } = resultado;
+  const partes: string[] = [];
+  if (creados === 0) partes.push('No se creó ningún turno programado.');
+  else if (creados === 1) partes.push('Se creó 1 turno programado.');
+  else partes.push(`Se crearon ${creados} turnos programados.`);
+
+  if (choques === 1) partes.push('1 se salteó porque se superponía.');
+  else if (choques > 1) partes.push(`${choques} se saltearon porque se superponían.`);
+  if (fueraDeHorario === 1) partes.push('1 se salteó porque quedaba fuera del horario.');
+  else if (fueraDeHorario > 1) {
+    partes.push(`${fueraDeHorario} se saltearon porque quedaban fuera del horario.`);
+  }
+  if (fallidos > 0) {
+    partes.push(
+      `${fallidos === 1 ? '1 no se pudo guardar' : `${fallidos} no se pudieron guardar`}, probá de nuevo.`,
+    );
+  }
+
+  if (creados > 0) {
+    partes.push(
+      agendaAutomatica
+        ? 'La agenda ya los está generando desde hoy.'
+        : 'Se publican cuando prendas la agenda automática.',
+    );
+  }
+  return partes.join(' ');
 }
 
 // Cuantos turnos genera la plantilla por semana: los turnos programados de los dias abiertos.
