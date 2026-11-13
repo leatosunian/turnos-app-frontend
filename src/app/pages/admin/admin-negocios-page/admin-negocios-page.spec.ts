@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { BusinessResponse } from '../../../core/models/negocio';
 import { UserResponse } from '../../../core/models/usuario';
@@ -154,6 +154,22 @@ describe('AdminNegociosPage', () => {
     await refrescar();
     expect(filas()[0]).toContain('Negocio 10');
     expect(texto()).toContain('11–20 de 23');
+  });
+
+  it('confirmar dos veces seguidas da de baja una sola vez', async () => {
+    // el pedido queda en curso: nunca responde
+    servicio.darDeBaja.mockReturnValue(NEVER);
+    await crear();
+
+    (
+      el().querySelector('button[aria-label="Dar de baja Spa Origen"]') as HTMLButtonElement
+    ).click();
+    await refrescar();
+    const pagina = fixture.componentInstance as unknown as { confirmarBaja(): void };
+    pagina.confirmarBaja();
+    pagina.confirmarBaja();
+
+    expect(servicio.darDeBaja).toHaveBeenCalledTimes(1);
   });
 
   it('dar de baja pide confirmación y, al confirmar, marca el negocio', async () => {
