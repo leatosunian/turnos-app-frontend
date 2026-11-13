@@ -201,7 +201,8 @@ export class AdminRubrosPage implements OnInit {
 
   protected confirmarEliminar(): void {
     const rubro = this.aEliminar();
-    if (!rubro) return;
+    // el botón se deshabilita mientras elimina, pero se cuida igual de un segundo envío
+    if (!rubro || this.eliminando()) return;
 
     this.eliminando.set(true);
     this.errorBaja.set('');
