@@ -16,7 +16,8 @@
 
   @if (!admin && !masAbierto()) {
     <a
-      routerLink="/panel/turnos"
+      routerLink="/panel/agenda"
+      [queryParams]="{ nuevo: 1 }"
       aria-label="Nuevo turno"
       class="fixed right-4.5 bottom-23 z-20 flex size-14 items-center justify-center rounded-2xl bg-accent text-on-accent hover:bg-accent-hover lg:hidden"
     >

@@ -4,7 +4,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import localeEsAr from '@angular/common/locales/es-AR';
 import { LOCALE_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { environment } from '../../../../environments/environment';
 import { errorInterceptor } from '../../../core/interceptors/error-interceptor';
 import { DayScheduleResponse, DiaSemana } from '../../../core/models/horario';
@@ -331,5 +332,69 @@ describe('AgendaPage', () => {
       .flush({ message: 'No encontrado' }, { status: 404, statusText: 'Not Found' });
     await refrescar();
     expect(el.textContent).toContain('Todavía no creaste tu negocio');
+  });
+});
+
+// "+ Nuevo turno" del menu lleva a /panel/agenda?nuevo=1. Va aparte porque necesita la ruta con
+// el parametro y una hora fija: el miercoles 18 de noviembre de 2026 a las 10:20
+describe('AgendaPage con ?nuevo=1', () => {
+  let harness: RouterTestingHarness;
+  let httpMock: HttpTestingController;
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 18, 10, 20));
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'panel/agenda', component: AgendaPage }]),
+        { provide: LOCALE_ID, useValue: 'es-AR' },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    harness = await RouterTestingHarness.create();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+    vi.useRealTimers();
+  });
+
+  async function abrir(semana = SEMANA): Promise<HTMLElement> {
+    await harness.navigateByUrl('/panel/agenda?nuevo=1');
+    httpMock.expectOne(`${API}/mine`).flush({ id: 'n-1', name: 'Barberia' });
+    httpMock.expectOne(`${API}/n-1/schedule`).flush(semana);
+    httpMock.expectOne(`${API}/n-1/employees`).flush([]);
+    httpMock
+      .expectOne(`${API}/n-1/services`)
+      .flush([{ id: 's-1', name: 'Corte', durationMinutes: 45, price: 12000 }]);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    httpMock.expectOne((req) => req.url === `${API}/n-1/appointments`).flush(pagina([]));
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    return harness.routeNativeElement!;
+  }
+
+  it('abre el diálogo de nuevo turno en la primera fila libre de hoy y limpia la URL', async () => {
+    const el = await abrir();
+
+    // abre de 9 a 12 de a 60: la fila de las 10:00 todavía tiene lugar; la primera hora que
+    // ofrece es la siguiente a las 10:20, las 10:25
+    expect(el.querySelector('app-nuevo-turno-dialogo')).not.toBeNull();
+    expect(el.textContent).toContain('Nuevo turno · Miércoles 18 de noviembre');
+    expect(el.querySelector<HTMLSelectElement>('app-nuevo-turno-dialogo select')!.value).toBe(
+      '10:25',
+    );
+    expect(TestBed.inject(Router).url).toBe('/panel/agenda');
+  });
+
+  it('si hoy ya cerró, lo abre en el día siguiente', async () => {
+    vi.setSystemTime(new Date(2026, 10, 18, 13, 0));
+    const el = await abrir();
+
+    expect(el.textContent).toContain('Nuevo turno · Jueves 19 de noviembre');
   });
 });

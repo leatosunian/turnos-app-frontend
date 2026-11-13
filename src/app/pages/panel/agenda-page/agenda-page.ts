@@ -171,10 +171,15 @@ export class AgendaPage implements OnInit {
 
   // El ?semana= de la URL. Si no viene o no es una fecha valida se usa la semana de hoy
   private readonly parametros = toSignal(this.ruta.queryParamMap);
-  protected readonly lunes = computed(() => {
-    const pedida = fechaDeClave(this.parametros()?.get('semana'));
-    return lunesDeSemana(pedida ?? this.ahora());
-  });
+  // Se compara por fecha y no por objeto: otro parametro de la URL (como ?nuevo=) o el reloj de
+  // cada 30 segundos arman un Date nuevo del mismo lunes, y eso volveria a pedir los turnos
+  protected readonly lunes = computed(
+    () => {
+      const pedida = fechaDeClave(this.parametros()?.get('semana'));
+      return lunesDeSemana(pedida ?? this.ahora());
+    },
+    { equal: (a, b) => a.getTime() === b.getTime() },
+  );
 
   // Arranca en el dia de hoy, con lunes 0 y domingo 6 (getDay da 0 para el domingo, por eso
   // el + 6 y el resto de dividir por 7). Al cambiar de semana se queda en el mismo dia de la
@@ -225,14 +230,17 @@ export class AgendaPage implements OnInit {
   // cerrado. Un dia que nunca se abrio tiene las horas en null, y ahi se usa el horario por
   // defecto de Horarios (09:00 a 18:00 cada 30) para que igual se puedan crear turnos a mano.
   // Asi la agenda sirve tambien para el que no usa la agenda automatica y carga todo a mano
-  private readonly horario = computed(() => {
-    const atencion = this.atencion();
+  private readonly horario = computed(() => this.horarioDe(this.diaElegido()));
+
+  // El horario de cualquier dia de la semana (0 es lunes), con el mismo criterio que horario
+  private horarioDe(dia: number): { inicio: string; fin: string; intervalo: number } {
+    const atencion = this.semanaAtencion()[dia] ?? null;
     return {
       inicio: atencion?.dayStart ?? DIA_POR_DEFECTO.inicio,
       fin: atencion?.dayEnd ?? DIA_POR_DEFECTO.fin,
       intervalo: atencion?.appointmentDuration ?? DIA_POR_DEFECTO.intervalo,
     };
-  });
+  }
 
   // Las filas del dia elegido con sus turnos, en todos los dias, tambien en los cerrados
   protected readonly grilla = computed(() => {
@@ -284,6 +292,12 @@ export class AgendaPage implements OnInit {
       const lunes = this.lunes();
       if (this.estado() !== 'listo') return;
       untracked(() => this.traerHasta(lunes));
+    });
+
+    // "+ Nuevo turno" del menu: cuando termina la carga, abre el dialogo (ver abrirNuevoDelMenu)
+    effect(() => {
+      if (this.estado() !== 'listo' || this.parametros()?.get('nuevo') !== '1') return;
+      untracked(() => this.abrirNuevoDelMenu());
     });
   }
 
@@ -378,8 +392,36 @@ export class AgendaPage implements OnInit {
       fecha: this.dia().fecha,
       hora,
       intervalo: this.horario().intervalo,
+      cierre: this.horario().fin,
       empleadoId: filtro && filtro !== SIN_ASIGNAR ? filtro : null,
     });
+  }
+
+  // Lo que hace "+ Nuevo turno" del menu (llega a /panel/agenda?nuevo=1): abre el dialogo en la
+  // primera fila que todavia se puede usar, arrancando por hoy y siguiendo con los dias que
+  // quedan de la semana. Despues saca el ?nuevo= de la URL, asi recargar o volver atras no lo
+  // abre de nuevo. Si en la semana ya no queda lugar (domingo a la noche), deja la agenda abierta
+  private abrirNuevoDelMenu(): void {
+    this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: { nuevo: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    if (!this.esSemanaActual()) return;
+    const hoy = (this.ahora().getDay() + 6) % 7;
+    for (let i = hoy; i < 7; i++) {
+      const { inicio, fin, intervalo } = this.horarioDe(i);
+      const clave = this.dias()[i].clave;
+      const fila = armarFilasDelDia([], inicio, fin, intervalo).filas.find((f) =>
+        filaDisponible(clave, f.hora, intervalo, this.ahora()),
+      );
+      if (fila) {
+        this.diaElegido.set(i);
+        this.nuevoTurno(fila.hora);
+        return;
+      }
+    }
   }
 
   // El dialogo creo el turno: se suma a lo que ya estaba cargado, asi aparece en su fila sin
