@@ -1,0 +1,148 @@
+<app-dialogo [titulo]="titulo()" [bloqueado]="eliminando()" (cerrado)="cerrado.emit()">
+  <app-estado-turno [turno]="turno()" [ahora]="ahora()" />
+
+  <!-- datos del turno -->
+  <dl class="grid grid-cols-2 gap-x-4 gap-y-3 rounded-card border border-line bg-app p-3.5">
+    <div class="col-span-2 flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Fecha</dt>
+      <dd class="font-medium">{{ turno().startDatetime | fecha }}</dd>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Horario</dt>
+      <dd class="font-mono font-medium">
+        {{ horaDe(turno().startDatetime) }} a {{ horaDe(turno().endDatetime) }}
+      </dd>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Duración</dt>
+      <dd class="font-mono font-medium">{{ duracion() }} min</dd>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Servicio</dt>
+      <dd class="font-medium">{{ turno().serviceName }}</dd>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Profesional</dt>
+      <dd class="font-medium">{{ profesional() }}</dd>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <dt class="text-small text-muted">Precio</dt>
+      <dd class="font-mono font-medium">{{ turno().price | monto }}</dd>
+    </div>
+  </dl>
+
+  @if (!libre()) {
+    <!-- datos de la reserva -->
+    <section aria-labelledby="titulo-reserva" class="flex flex-col gap-2">
+      <h3 id="titulo-reserva" class="font-semibold">Reserva</h3>
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 rounded-card border border-line bg-app p-3.5">
+        <div class="col-span-2 flex flex-col gap-0.5">
+          <dt class="text-small text-muted">Cliente</dt>
+          <dd class="font-medium">{{ turno().clientName ?? 'Sin nombre' }}</dd>
+        </div>
+        <div class="col-span-2 flex flex-col gap-0.5 sm:col-span-1">
+          <dt class="text-small text-muted">Email</dt>
+          <dd class="font-medium break-all">
+            @if (turno().clientEmail; as email) {
+              <a
+                [href]="'mailto:' + email"
+                class="underline decoration-line-strong hover:text-accent"
+              >
+                {{ email }}
+              </a>
+            } @else {
+              <span class="text-muted">No lo dejó</span>
+            }
+          </dd>
+        </div>
+        <div class="col-span-2 flex flex-col gap-0.5 sm:col-span-1">
+          <dt class="text-small text-muted">Teléfono</dt>
+          <dd class="font-mono font-medium">
+            @if (turno().clientPhone; as telefono) {
+              <a
+                [href]="'tel:' + telefono"
+                class="underline decoration-line-strong hover:text-accent"
+              >
+                {{ telefono }}
+              </a>
+            } @else {
+              <span class="font-sans text-muted">No lo dejó</span>
+            }
+          </dd>
+        </div>
+        <div class="col-span-2 flex flex-col gap-0.5">
+          <dt class="text-small text-muted">Seña</dt>
+          <dd class="font-medium">
+            @if (turno().deposit; as sena) {
+              <span class="font-mono">{{ sena.amount | monto }}</span> · {{ textoSena() }}
+              @if (sena.paidAt) {
+                <span class="block text-small text-muted">
+                  Pagada el {{ sena.paidAt | fecha }}
+                </span>
+              }
+            } @else {
+              <!-- los que el dueño carga a mano desde la agenda no llevan seña -->
+              Sin seña
+            }
+          </dd>
+        </div>
+      </dl>
+    </section>
+  } @else if (!confirmando()) {
+    <p class="rounded-xl border border-dashed border-line-strong p-3 text-small text-muted">
+      Está publicado en tu página para que lo reserve un cliente.
+    </p>
+  }
+
+  @if (confirmando()) {
+    <div
+      role="alert"
+      class="flex flex-col gap-1 rounded-card border border-danger-line bg-danger-soft p-3.5"
+    >
+      <span class="font-semibold text-danger-fg">¿Eliminar este turno?</span>
+      <span class="text-small text-fg-2">
+        Deja de estar disponible en tu página. Esta acción no se puede deshacer.
+      </span>
+    </div>
+  }
+
+  @if (error()) {
+    <p role="alert" class="text-small text-danger-fg">{{ error() }}</p>
+  }
+
+  <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    @if (confirmando()) {
+      <button
+        appBoton
+        variante="secundario"
+        type="button"
+        [disabled]="eliminando()"
+        (click)="volver()"
+      >
+        Volver
+      </button>
+      <button
+        appBoton
+        variante="destructivo"
+        type="button"
+        [disabled]="eliminando()"
+        (click)="eliminar()"
+      >
+        {{ eliminando() ? 'Eliminando…' : 'Sí, eliminar' }}
+      </button>
+    } @else {
+      @if (libre()) {
+        <button
+          appBoton
+          variante="destructivo"
+          type="button"
+          (click)="pedirEliminar()"
+          class="sm:mr-auto"
+        >
+          Eliminar turno
+        </button>
+      }
+      <button appBoton variante="secundario" type="button" (click)="cerrado.emit()">Cerrar</button>
+    }
+  </div>
+</app-dialogo>
