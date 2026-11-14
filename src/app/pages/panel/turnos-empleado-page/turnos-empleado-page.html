@@ -1,0 +1,142 @@
+<div class="flex flex-col gap-5">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div class="flex min-w-0 flex-col gap-1">
+      @if (negocio()) {
+        <span class="text-[13px] text-muted">{{ negocio() }}</span>
+      }
+      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Mis turnos</h1>
+      <p class="text-[13px] text-muted">
+        Los turnos que tenés asignados. Si necesitás cambiar alguno, pedíselo al dueño del negocio.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+      <app-segmentado
+        etiqueta="Período"
+        [opciones]="periodos"
+        [valor]="periodo()"
+        (valorChange)="elegirPeriodo($event)"
+        class="w-full sm:w-fit max-sm:[&>button]:flex-1"
+      />
+      <label class="flex items-center">
+        <span class="sr-only">Estado</span>
+        <select
+          [value]="estado()"
+          (change)="elegirEstado($any($event.target).value)"
+          class="h-9.5 w-full rounded-control border border-line bg-surface-1 px-2 text-body text-fg outline-none focus:border-accent sm:w-auto"
+        >
+          @for (opcion of estados; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.texto }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div
+      role="alert"
+      class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
+    >
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold text-danger-fg">No se pudieron cargar tus turnos</span>
+        <span class="text-small text-fg-2">{{ error() }}</span>
+      </div>
+      <button appBoton variante="secundario" type="button" (click)="reintentar()">
+        Reintentar
+      </button>
+    </div>
+  } @else if (cargando() === 'lista') {
+    <div aria-busy="true" aria-label="Cargando tus turnos" class="flex flex-col gap-2">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="h-16 animate-pulse rounded-card bg-surface-2"></div>
+      }
+    </div>
+  } @else if (!turnos().length) {
+    <app-aviso-vacio
+      [titulo]="
+        periodo() === 'proximos' ? 'No tenés turnos próximos' : 'No tenés turnos anteriores'
+      "
+      [detalle]="
+        estado()
+          ? 'Probá con otro estado o mirá todos.'
+          : 'Cuando el dueño te asigne turnos, los vas a ver acá.'
+      "
+    >
+      @if (estado()) {
+        <button appBoton variante="secundario" type="button" (click)="elegirEstado('')">
+          Ver todos
+        </button>
+      }
+    </app-aviso-vacio>
+  } @else {
+    <div class="flex flex-col gap-5">
+      @for (grupo of grupos(); track grupo.clave) {
+        <section class="flex flex-col gap-1.5">
+          <h2 class="text-[12.5px] font-medium text-faint">
+            @if (grupo.relativo) {
+              {{ grupo.relativo }} ·
+            }
+            {{ grupo.fecha | fecha }}
+          </h2>
+          @for (turno of grupo.turnos; track turno.id) {
+            <!-- en compu la fila tiene cuatro columnas: horario, cliente y servicio, contacto y
+                 estado. En el celular el contacto baja abajo del servicio para que entre todo -->
+            <div
+              class="grid grid-cols-[52px_1fr_auto] items-center gap-3 rounded-xl bg-surface-1 px-3 py-2.5 lg:grid-cols-[128px_1fr_220px_150px] lg:px-4"
+            >
+              <!-- whitespace-nowrap para que en compu "15:00 – 15:45" quede en una sola linea -->
+              <span
+                class="flex flex-col font-mono leading-tight whitespace-nowrap tabular-nums lg:flex-row lg:gap-1"
+              >
+                <span>{{ turno.startDatetime | hora }}</span>
+                <span class="text-small text-muted lg:text-body"
+                  ><span class="hidden lg:inline">– </span>{{ turno.endDatetime | hora }}</span
+                >
+              </span>
+              <div class="flex min-w-0 flex-col">
+                <span
+                  class="truncate font-semibold"
+                  [class.line-through]="turno.status === 'CANCELLED'"
+                  [class.text-muted]="turno.status === 'CANCELLED' || !turno.clientName"
+                >
+                  {{ turno.clientName ?? 'Sin reservar' }}
+                </span>
+                <span class="truncate text-small text-muted">
+                  {{ turno.serviceName }}
+                  @if (contacto(turno)) {
+                    <span class="lg:hidden"> · {{ contacto(turno) }}</span>
+                  }
+                </span>
+              </div>
+              <span class="hidden truncate text-small text-fg-2 lg:block">
+                {{ contacto(turno) }}
+              </span>
+              <app-estado-turno
+                [turno]="turno"
+                class="justify-self-end max-lg:gap-1.5! max-lg:px-2.5! max-lg:py-1! max-lg:text-[11px]! lg:justify-self-start"
+              />
+            </div>
+          }
+        </section>
+      }
+
+      <div class="flex flex-col items-center gap-2">
+        <span class="font-mono text-small text-muted tabular-nums">
+          {{ turnos().length }} de {{ total() }}
+        </span>
+        @if (hayMas()) {
+          <button
+            appBoton
+            variante="secundario"
+            type="button"
+            (click)="cargarMas()"
+            [disabled]="cargando() === 'mas'"
+          >
+            {{ cargando() === 'mas' ? 'Cargando…' : 'Cargar más' }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

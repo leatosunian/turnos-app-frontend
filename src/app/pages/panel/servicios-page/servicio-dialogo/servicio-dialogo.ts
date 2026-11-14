@@ -9,6 +9,7 @@ import { Boton } from '../../../../shared/components/boton/boton';
 import { Campo } from '../../../../shared/components/campo/campo';
 import { MontoPipe } from '../../../../shared/pipes/monto-pipe';
 import { Dialogo } from '../../../../shared/components/dialogo/dialogo';
+import { obligatorio } from '../../../../shared/validadores/validadores';
 import { PORCENTAJE_SENA_POR_DEFECTO, montoSena } from '../sena';
 
 const NUMERO_ENTERO = /^\d+$/;
@@ -29,7 +30,7 @@ export class ServicioDialogo implements OnInit {
   private readonly servicios = inject(ServicioService);
 
   protected readonly form = inject(FormBuilder).group({
-    nombre: ['', [Validators.required, Validators.maxLength(80)]],
+    nombre: ['', [obligatorio, Validators.maxLength(80)]],
     duracion: [
       null as number | null,
       [

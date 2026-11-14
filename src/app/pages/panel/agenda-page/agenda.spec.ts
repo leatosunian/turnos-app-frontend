@@ -12,13 +12,12 @@ import {
   horaDe,
   horasDeLaFila,
   lunesDeSemana,
-  numeroDeSemana,
   posicionDeAhora,
   rangoDelTurno,
   resumenDelDia,
   sumarDias,
   sumarSinRepetir,
-  textoDeSemana,
+  rangoDeSemana,
   turnoQueChoca,
   turnosDelDia,
 } from './agenda';
@@ -86,21 +85,9 @@ describe('agenda', () => {
     expect(dias.filter((d) => d.esHoy).map((d) => d.numero)).toEqual([4]);
   });
 
-  it('numeroDeSemana sigue la regla ISO', () => {
-    expect(numeroDeSemana(new Date(2026, 10, 9))).toBe(46);
-    expect(numeroDeSemana(new Date(2026, 10, 15))).toBe(46);
-    expect(numeroDeSemana(new Date(2026, 9, 26))).toBe(44);
-    // el 1/1/2026 es jueves, asi que esa semana ya es la 1 de 2026
-    expect(numeroDeSemana(new Date(2026, 0, 1))).toBe(1);
-    // el 31/12/2024 es martes y su jueves cae en 2025
-    expect(numeroDeSemana(new Date(2024, 11, 31))).toBe(1);
-    // el 1/1/2027 es viernes y todavia es de la ultima semana de 2026
-    expect(numeroDeSemana(new Date(2027, 0, 1))).toBe(53);
-  });
-
-  it('textoDeSemana nombra un mes o los dos si la semana cruza', () => {
-    expect(textoDeSemana(new Date(2026, 10, 9))).toBe('9 al 15 nov · semana 46');
-    expect(textoDeSemana(new Date(2026, 9, 26))).toBe('26 oct al 1 nov · semana 44');
+  it('rangoDeSemana nombra un mes o los dos si la semana cruza', () => {
+    expect(rangoDeSemana(new Date(2026, 10, 9))).toBe('9 al 15 nov');
+    expect(rangoDeSemana(new Date(2026, 9, 26))).toBe('26 oct al 1 nov');
   });
 
   it('horaDe corta la hora sin segundos', () => {

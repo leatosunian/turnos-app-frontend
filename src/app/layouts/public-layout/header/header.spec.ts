@@ -119,10 +119,10 @@ describe('Header con sesión', () => {
     expect(pantalla.querySelector('#menu-publico')).toBeNull();
   });
 
-  it('un dueño no ve Mis turnos y su Ingresar lo lleva a /panel', async () => {
+  it('un dueño no ve Mis turnos y ve Mi panel, que lo lleva a /panel', async () => {
     const links = await crearConRoles(['OWNER'], '/panel');
     expect(links.find((a) => a.textContent?.trim() === 'Mis turnos')).toBeUndefined();
-    const ingresar = links.find((a) => a.textContent?.trim() === 'Ingresar');
+    const ingresar = links.find((a) => a.textContent?.trim() === 'Mi panel');
     expect(ingresar?.getAttribute('href')).toBe('/panel');
   });
 
@@ -133,9 +133,9 @@ describe('Header con sesión', () => {
     expect(links.find((a) => a.textContent?.trim() === 'Ingresar')).toBeUndefined();
   });
 
-  it('un admin sigue viendo Ingresar, que lo lleva a /admin', async () => {
+  it('un admin ve Administración, que lo lleva a /admin', async () => {
     const links = await crearConRoles(['ADMIN'], '/admin');
-    const ingresar = links.find((a) => a.textContent?.trim() === 'Ingresar');
+    const ingresar = links.find((a) => a.textContent?.trim() === 'Administración');
     expect(ingresar?.getAttribute('href')).toBe('/admin');
   });
 });

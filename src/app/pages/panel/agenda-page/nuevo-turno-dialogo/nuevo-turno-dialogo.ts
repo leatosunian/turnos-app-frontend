@@ -20,6 +20,7 @@ import { Campo } from '../../../../shared/components/campo/campo';
 import { Dialogo } from '../../../../shared/components/dialogo/dialogo';
 import { OpcionSegmentado, Segmentado } from '../../../../shared/components/segmentado/segmentado';
 import { MontoPipe } from '../../../../shared/pipes/monto-pipe';
+import { FORMATO_EMAIL } from '../../../../shared/validadores/validadores';
 import { horaDe, horasDeLaFila, rangoDelTurno, turnoQueChoca } from '../agenda';
 
 // Con que se abre el dialogo: el dia y la fila donde se toco el "+"
@@ -47,8 +48,6 @@ const MODOS: OpcionSegmentado[] = [
 // las mismas reglas que valida el back, asi el error aparece antes de mandar.
 // El telefono acepta de 7 a 20 caracteres entre digitos, espacios, + y -
 const PATRON_TELEFONO = /^[0-9+\-\s]{7,20}$/;
-// alcanza con que tenga algo, una arroba, algo, un punto y algo: ana@mail.com pasa y ana@mail no
-const PATRON_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Alta de un turno suelto desde la Agenda (AgendaPage), en el dia y la fila donde el dueño toco
 // el "+". Se elige la hora (de a 5 minutos dentro de la fila), el servicio y el profesional, y
@@ -167,7 +166,7 @@ export class NuevoTurnoDialogo implements OnInit {
   protected readonly errorEmail = computed(() => {
     const email = this.email().trim();
     if (!this.paraCliente() || !this.intento() || !email) return null;
-    return PATRON_EMAIL.test(email) ? null : 'El email no es válido.';
+    return FORMATO_EMAIL.test(email) ? null : 'El email no es válido.';
   });
 
   protected readonly errorTelefono = computed(() => {

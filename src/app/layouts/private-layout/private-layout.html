@@ -5,10 +5,11 @@
 
   <!-- abajo deja lugar para la barra inferior y, en el panel, tambien para el boton flotante
        de nuevo turno (llega a 148 px del borde), asi lo ultimo de la pantalla se puede subir
-       por encima del boton y no queda tapado (por ejemplo "Cargar más" en Turnos) -->
+       por encima del boton y no queda tapado (por ejemplo "Cargar más" en Turnos). El admin y
+       el empleado tienen barra pero no boton, asi que les alcanza con el lugar de la barra -->
   <main
     [class.max-lg:hidden]="masAbierto()"
-    [class]="admin ? 'pb-24' : 'pb-40'"
+    [class]="admin || soloEmpleado() ? 'pb-24' : 'pb-40'"
     class="min-w-0 flex-1 px-4.5 pt-4 lg:m-2.5 lg:ml-0 lg:rounded-container lg:border lg:border-line lg:bg-surface-1 lg:px-8 lg:py-7"
   >
     <router-outlet />
@@ -18,7 +19,7 @@
     <app-menu-mas (elegir)="cerrarMas()" class="block min-w-0 flex-1 px-4.5 pt-4 pb-24 lg:hidden" />
   }
 
-  @if (!admin && !masAbierto()) {
+  @if (!admin && !soloEmpleado() && !masAbierto()) {
     <a
       routerLink="/panel/agenda"
       [queryParams]="{ nuevo: 1 }"
@@ -42,6 +43,7 @@
 
   <app-barra-inferior
     [admin]="admin"
+    [empleado]="soloEmpleado()"
     [masAbierto]="masAbierto()"
     (alternarMas)="alternarMas()"
     (navegar)="cerrarMas()"

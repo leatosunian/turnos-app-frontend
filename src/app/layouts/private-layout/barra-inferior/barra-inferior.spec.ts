@@ -30,6 +30,17 @@ describe('BarraInferior', () => {
     expect(textos).toEqual(['Resumen', 'Usuarios', 'Negocios', 'Rubros']);
   });
 
+  it('al empleado le muestra Mis turnos y Mi actividad, sin el botón Más', async () => {
+    fixture.componentRef.setInput('empleado', true);
+    await fixture.whenStable();
+    const nav = (fixture.nativeElement as HTMLElement).querySelector('nav')!;
+    const textos = Array.from(nav.querySelectorAll('a'), (a) => a.textContent?.trim());
+
+    expect(textos).toEqual(['Mis turnos', 'Mi actividad']);
+    expect(nav.querySelector('button')).toBeNull();
+    expect(nav.classList).toContain('grid-cols-2');
+  });
+
   it('el botón Más avisa que se tocó y refleja si el menú está abierto', async () => {
     let veces = 0;
     component.alternarMas.subscribe(() => veces++);

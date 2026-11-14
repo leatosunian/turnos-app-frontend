@@ -14,6 +14,7 @@ import { AuthService } from '../../../core/services/auth-service';
 import { Boton } from '../../../shared/components/boton/boton';
 import { Campo } from '../../../shared/components/campo/campo';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
+import { NOMBRE_PERSONA, emailValido, obligatorio } from '../../../shared/validadores/validadores';
 
 type Modo = 'ingresar' | 'crear';
 type TipoCuenta = 'negocio' | 'cliente';
@@ -23,8 +24,8 @@ interface Paso {
   detalle: string;
 }
 
-// mismas reglas que el back (RegisterRequest), así el error aparece antes de mandar el form
-const SOLO_LETRAS = /^[a-zA-Z\s]+$/;
+// mismas reglas que el back (RegisterRequest), así el error aparece antes de mandar el form.
+// El nombre usa NOMBRE_PERSONA de shared/validadores, que acepta tildes y ñ igual que el back
 const CLAVE_SEGURA = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])[\x00-\x7F]+$/;
 
 const PASOS: Record<TipoCuenta, Paso[]> = {
@@ -68,7 +69,8 @@ export class IngresarPage {
   protected readonly mensajes = {
     nombre: {
       required: 'Ingresá tu nombre y apellido.',
-      pattern: 'Usá solo letras y espacios, sin tildes ni ñ.',
+      maxlength: 'Puede tener hasta 100 caracteres.',
+      pattern: 'Usá solo letras y espacios, sin números ni signos.',
     },
     email: { required: 'Ingresá tu email.', email: 'Revisá el email, no parece válido.' },
     claveIngreso: { required: 'Ingresá tu contraseña.' },
@@ -94,13 +96,13 @@ export class IngresarPage {
   });
 
   protected readonly ingreso = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [obligatorio, emailValido]],
     password: ['', Validators.required],
   });
 
   protected readonly registro = this.fb.group({
-    nombre: ['', [Validators.required, Validators.pattern(SOLO_LETRAS)]],
-    email: ['', [Validators.required, Validators.email]],
+    nombre: ['', [obligatorio, Validators.maxLength(100), Validators.pattern(NOMBRE_PERSONA)]],
+    email: ['', [obligatorio, emailValido]],
     password: [
       '',
       [
@@ -119,6 +121,8 @@ export class IngresarPage {
     this.router.navigate([], {
       queryParams: { modo: modo === 'crear' ? 'crear' : null },
       replaceUrl: true,
+      // en el celu las pestañas quedan mas abajo; sin esto tocar una subia la pagina de golpe
+      scroll: 'manual',
     });
   }
 
@@ -152,11 +156,15 @@ export class IngresarPage {
   }
 
   private pedido(): Observable<UserResponse> {
+    // El email va sin los espacios de las puntas, que a veces los agrega el autocompletado del
+    // celular. El validador ya los ignora, asi que si no se sacan aca el back lo rechazaria.
+    // En el nombre tambien se juntan los espacios repetidos: "Ana   Paz" se guarda "Ana Paz"
     if (this.modo() === 'ingresar') {
-      return this.auth.login(this.ingreso.getRawValue());
+      const { email, password } = this.ingreso.getRawValue();
+      return this.auth.login({ email: email.trim(), password });
     }
     const { nombre, email, password } = this.registro.getRawValue();
-    const datos = { name: nombre.trim(), email, password };
+    const datos = { name: nombre.trim().replace(/\s+/g, ' '), email: email.trim(), password };
     return this.tipo() === 'negocio'
       ? this.auth.registrar(datos)
       : this.auth.registrarCliente(datos);

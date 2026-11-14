@@ -43,7 +43,7 @@
 
   @switch (estado()) {
     @case ('cargando') {
-      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <h1 class="hidden text-h1 lg:block">Servicios y equipo</h1>
       <div aria-busy="true" aria-label="Cargando servicios y equipo" class="flex flex-col gap-2">
         @for (i of [1, 2, 3, 4]; track i) {
           <div class="h-16 animate-pulse rounded-card bg-surface-2"></div>
@@ -51,7 +51,7 @@
       </div>
     }
     @case ('sin-negocio') {
-      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <h1 class="hidden text-h1 lg:block">Servicios y equipo</h1>
       <app-aviso-vacio
         titulo="Todavía no creaste tu negocio"
         detalle="Cuando cargues sus datos vas a poder sumar servicios y profesionales."
@@ -60,7 +60,7 @@
       </app-aviso-vacio>
     }
     @case ('error') {
-      <h1 class="hidden text-h1 lg:block">Servicios</h1>
+      <h1 class="hidden text-h1 lg:block">Servicios y equipo</h1>
       <div
         role="alert"
         class="flex flex-col items-start gap-3 rounded-card border border-danger-line bg-danger-soft p-4"
@@ -80,7 +80,10 @@
         class="w-full! lg:hidden! [&>button]:flex-1"
       />
 
-      <div class="flex gap-5">
+      <!-- En pantallas de 1024 a 1279 px no entran la tabla y el equipo uno al lado del otro: la
+           columna del nombre se quedaba sin lugar y se pisaba con la duracion. Ahi el equipo va
+           abajo de los servicios, y recien desde xl (1280) van en dos columnas. -->
+      <div class="flex gap-5 lg:max-xl:flex-col">
         <section
           aria-label="Servicios"
           class="flex min-w-0 flex-1 flex-col gap-4"
@@ -89,7 +92,7 @@
           <header class="hidden items-end justify-between lg:flex">
             <div class="flex flex-col gap-1">
               <span class="text-[13px] text-muted">{{ resumenServicios() }}</span>
-              <h1 class="text-h1">Servicios</h1>
+              <h1 class="text-h1">Servicios y equipo</h1>
             </div>
             <button appBoton type="button" (click)="nuevoServicio()">+ Servicio</button>
           </header>
@@ -146,7 +149,7 @@
 
         <aside
           aria-label="Equipo"
-          class="flex flex-col gap-3.5 max-lg:flex-1 lg:w-90 lg:shrink-0 lg:rounded-card lg:border lg:border-line lg:bg-app lg:p-4.5"
+          class="flex flex-col gap-3.5 max-lg:flex-1 xl:w-90 xl:shrink-0 lg:rounded-card lg:border lg:border-line lg:bg-app lg:p-4.5"
           [class.max-lg:hidden]="pestania() !== 'equipo'"
         >
           <div class="hidden items-center justify-between lg:flex">

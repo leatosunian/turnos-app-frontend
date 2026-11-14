@@ -126,13 +126,21 @@ describe('AuthService', () => {
     httpMock.expectNone(`${URL}/me`);
   });
 
-  it('cerrarSesion borra el token y va a /ingresar', () => {
+  it('cerrarSesion borra el token y va al home', () => {
     localStorage.setItem('token', 'abc');
     crear();
     auth.cerrarSesion();
 
     expect(localStorage.getItem('token')).toBeNull();
     expect(auth.logueado()).toBe(false);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
+  it('cerrarSesion va al destino que se le pasa', () => {
+    localStorage.setItem('token', 'abc');
+    crear();
+    auth.cerrarSesion('/ingresar');
+
     expect(router.navigateByUrl).toHaveBeenCalledWith('/ingresar');
   });
 

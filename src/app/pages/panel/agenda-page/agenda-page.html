@@ -1,80 +1,106 @@
 <!-- el pb-16 del celular es para que el boton flotante "+" del layout no tape lo de abajo -->
 <div class="flex flex-col gap-5 pb-16 lg:pb-0">
-  <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-    <div class="flex flex-col gap-1">
-      <span class="text-[13px] text-muted">{{ titulo() }}</span>
-      <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Agenda</h1>
-    </div>
+  <!-- en compu son tres columnas: el titulo a la izquierda, el dock de la semana en el medio y el
+       filtro de profesional a la derecha. Las de los costados son 1fr las dos, asi el dock queda
+       centrado en la pagina aunque el titulo y el select no midan lo mismo. En el celular el
+       titulo y el select comparten la primera fila, abajo va el subtitulo y el dock baja a la
+       tercera con todo el ancho -->
+  <header
+    class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 lg:grid-cols-[1fr_auto_1fr]"
+  >
+    <h1 class="text-[26px] leading-8 font-semibold tracking-[-0.6px] lg:text-h1">Agenda</h1>
+    <!-- el subtitulo va en su propia fila y no abajo del titulo dentro de un div, porque en el
+         celular el titulo comparte la fila con el select y el texto quedaria apretado en una
+         columna finita. El -mt-2 le descuenta parte del gap-y-3 para que quede pegado al titulo -->
+    <p class="col-span-2 row-start-2 -mt-2 text-[13px] text-muted lg:col-span-3">
+      Los turnos de la semana, día por día y por horario. Clickeá en una fila para crear un turno
+      nuevo.
+    </p>
 
     @if (estado() === 'listo') {
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="flex items-center gap-1.5">
-          <button
-            type="button"
-            (click)="moverSemana(-1)"
-            aria-label="Semana anterior"
-            class="flex size-9 items-center justify-center rounded-control border border-line bg-surface-1 text-fg-2 hover:text-fg"
+      <!-- dock de la semana: flechas a los costados de las fechas y el Hoy al final, todo en una
+           sola pastilla para que se lea de un vistazo que semana se esta mirando -->
+      <nav
+        aria-label="Cambiar de semana"
+        class="col-span-2 row-start-3 flex w-full items-center gap-1 justify-self-center rounded-full border border-line bg-surface-1 p-1 sm:w-auto lg:col-span-1 lg:col-start-2 lg:row-start-1"
+      >
+        <button
+          type="button"
+          (click)="moverSemana(-1)"
+          aria-label="Semana anterior"
+          class="flex size-9 shrink-0 items-center justify-center rounded-full text-fg-2 hover:bg-surface-3 hover:text-fg"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            (click)="irAHoy()"
-            [disabled]="esSemanaActual() && dia().esHoy"
-            class="h-9 rounded-control border border-line bg-surface-1 px-3.5 font-medium text-fg hover:border-line-strong disabled:text-muted"
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            (click)="moverSemana(1)"
-            aria-label="Semana siguiente"
-            class="flex size-9 items-center justify-center rounded-control border border-line bg-surface-1 text-fg-2 hover:text-fg"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+        <!-- aria-live para que el lector de pantalla lea la semana nueva al tocar una flecha.
+               El min-w evita que el dock cambie de ancho entre "2 al 8 nov" y
+               "26 oct al 1 nov" y las flechas salten de lugar bajo el mouse -->
+        <div
+          aria-live="polite"
+          class="flex min-w-36 flex-1 flex-col items-center px-2 text-center leading-tight"
+        >
+          <span class="font-semibold whitespace-nowrap text-fg">{{ rango() }}</span>
         </div>
-
-        <label class="flex items-center gap-2 text-small text-muted">
-          <span class="sr-only">Profesional</span>
-          <select
-            (change)="elegirProfesional($any($event.target).value)"
-            class="h-9 rounded-control border border-line bg-surface-1 px-2 text-body text-fg outline-none focus:border-accent"
+        <button
+          type="button"
+          (click)="moverSemana(1)"
+          aria-label="Semana siguiente"
+          class="flex size-9 shrink-0 items-center justify-center rounded-full text-fg-2 hover:bg-surface-3 hover:text-fg"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
           >
-            <option value="" [selected]="filtro() === ''">Todo el equipo</option>
-            @for (empleado of equipo(); track empleado.id) {
-              <option [value]="empleado.id" [selected]="filtro() === empleado.id">
-                {{ empleado.name }}
-              </option>
-            }
-            <option [value]="sinAsignar" [selected]="filtro() === sinAsignar">Sin asignar</option>
-          </select>
-        </label>
-      </div>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+        <span aria-hidden="true" class="mx-1 h-6 w-px shrink-0 bg-line"></span>
+        <!-- en ámbar mientras se esta mirando otra semana u otro dia, para que se note que hay
+               adonde volver. Si ya se esta en hoy queda apagado -->
+        <button
+          type="button"
+          (click)="irAHoy()"
+          [disabled]="esSemanaActual() && dia().esHoy"
+          class="h-9 shrink-0 rounded-full bg-accent-soft px-4 font-medium text-accent hover:bg-surface-3 disabled:bg-transparent disabled:text-muted"
+        >
+          Hoy
+        </button>
+      </nav>
+
+      <label class="flex items-center justify-self-end text-small text-muted lg:col-start-3">
+        <span class="sr-only">Profesional</span>
+        <select
+          (change)="elegirProfesional($any($event.target).value)"
+          class="h-9 rounded-control border border-line bg-surface-1 px-2 text-body text-fg outline-none focus:border-accent"
+        >
+          <option value="" [selected]="filtro() === ''">Todo el equipo</option>
+          @for (empleado of equipo(); track empleado.id) {
+            <option [value]="empleado.id" [selected]="filtro() === empleado.id">
+              {{ empleado.name }}
+            </option>
+          }
+          <option [value]="sinAsignar" [selected]="filtro() === sinAsignar">Sin asignar</option>
+        </select>
+      </label>
     }
   </header>
 
@@ -163,11 +189,12 @@
             <div class="flex items-center gap-2.5">
               <span
                 aria-hidden="true"
-                class="h-8 w-1 rounded-full"
+                class="h-11 w-1 rounded-full"
                 [class]="atencion()?.enabled ? 'bg-accent' : 'bg-idle'"
               ></span>
               <div class="flex flex-col">
-                <span class="font-semibold">
+                <!-- la fecha en grande para que sea lo primero que se lee del panel del dia -->
+                <span class="text-[19px] leading-7 font-semibold tracking-[-0.3px] text-fg">
                   {{ dia().fecha | fecha }}
                   @if (dia().esHoy) {
                     <span class="font-normal text-accent">· hoy</span>

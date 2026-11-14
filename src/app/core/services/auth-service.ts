@@ -78,9 +78,13 @@ export class AuthService {
     );
   }
 
-  cerrarSesion(): void {
+  // Borra el token y el usuario y lleva a otra pantalla. destino: a donde ir despues.
+  // Por defecto es el home, que es lo que se espera cuando la persona toca "Cerrar sesion" en el
+  // menu. El errorInterceptor pasa /ingresar porque ahi la sesion se corto sola (token vencido) y
+  // lo logico es mandarla directo a loguearse de nuevo
+  cerrarSesion(destino = '/'): void {
     this.limpiarSesion();
-    this.router.navigateByUrl('/ingresar');
+    this.router.navigateByUrl(destino);
   }
 
   tieneRol(roles: RoleName[]): boolean {

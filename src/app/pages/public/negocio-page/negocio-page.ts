@@ -34,6 +34,7 @@ import { FechaPipe } from '../../../shared/pipes/fecha-pipe';
 import { HoraPipe } from '../../../shared/pipes/hora-pipe';
 import { MontoPipe } from '../../../shared/pipes/monto-pipe';
 import { NoEncontradoPage } from '../no-encontrado-page/no-encontrado-page';
+import { emailValido, obligatorio } from '../../../shared/validadores/validadores';
 import {
   agruparPorDia,
   claveDeFecha,
@@ -118,8 +119,8 @@ export class NegocioPage {
   protected readonly logueado = this.auth.logueado;
 
   protected readonly datos = inject(NonNullableFormBuilder).group({
-    nombre: ['', [Validators.required, Validators.maxLength(100)]],
-    email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+    nombre: ['', [obligatorio, Validators.maxLength(100)]],
+    email: ['', [obligatorio, emailValido, Validators.maxLength(255)]],
     telefono: ['', Validators.pattern(TELEFONO)],
   });
 
