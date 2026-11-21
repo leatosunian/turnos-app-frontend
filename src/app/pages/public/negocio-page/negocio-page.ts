@@ -18,6 +18,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, map, switchMap } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
+import { HORAS_PARA_DEVOLVER_SENA } from '../../../core/models/turno-cliente';
 import { ReservaEnCurso } from '../../../core/models/reserva';
 import { BusinessResponse } from '../../../core/models/negocio';
 import { ServResponse } from '../../../core/models/servicio';
@@ -140,6 +141,13 @@ export class NegocioPage {
   });
   /** Servicio sin seña: el turno queda confirmado al reservar, no hay nada que pagar. */
   protected readonly sinSena = computed(() => this.senaServicio()?.porcentaje === 0);
+  /**
+   * Con cuántas horas de anticipación cancelar devuelve la seña, según la política del negocio.
+   * Si no viene (negocios de antes de la política), es la regla de siempre: 24 h.
+   */
+  protected readonly horasPolitica = computed(
+    () => this.negocio()?.cancellationNoticeHours ?? HORAS_PARA_DEVOLVER_SENA,
+  );
   private readonly libresPorDia = computed(() => agruparPorDia(this.libres()));
   protected readonly semanas = computed(() =>
     semanasDelMes(this.mes(), new Set(this.libresPorDia().keys())),
