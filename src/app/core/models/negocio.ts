@@ -15,6 +15,8 @@ export interface BusinessResponse {
   scheduleEnd: string | null;
   scheduleDaysToCreate: number;
   scheduleAnticipation: number;
+  /** Horas de anticipación con las que cancelar devuelve la seña: 24, 48, 72 o 96. */
+  cancellationNoticeHours?: number | null;
   deleted: boolean;
   ownerId: string;
   businessTypes: BusinessTypeResponse[];
