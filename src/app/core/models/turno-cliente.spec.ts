@@ -1,4 +1,12 @@
-import { esProximo, limiteDevolucion, sePuedeCancelar, seDevuelveLaSena } from './turno-cliente';
+import { AppointmentResponse, DepositResponse } from './turno';
+import {
+  esProximo,
+  horasDePolitica,
+  limiteDevolucion,
+  sePuedeCancelar,
+  seDevuelveLaSena,
+  tieneSena,
+} from './turno-cliente';
 
 const AHORA = new Date(2025, 9, 28, 10, 0);
 
@@ -43,11 +51,54 @@ describe('turno-cliente', () => {
     ).toBe(false);
   });
 
+  // una seña con la política guardada al reservar
+  const sena = (horas: number | null | undefined, amount = 3750): DepositResponse => ({
+    id: 'd-1',
+    amount,
+    status: 'PAID',
+    paidAt: null,
+    cancellationNoticeHours: horas,
+  });
+  const conSena = (inicio: string, horas?: number | null) =>
+    ({ startDatetime: inicio, deposit: sena(horas) }) as Pick<
+      AppointmentResponse,
+      'startDatetime' | 'deposit'
+    >;
+
+  it('usa las horas guardadas en la seña y, si no vienen, 24 h', () => {
+    expect(horasDePolitica(conSena('2025-10-30T10:00:00', 48))).toBe(48);
+    expect(horasDePolitica(conSena('2025-10-30T10:00:00', 96))).toBe(96);
+    expect(horasDePolitica(conSena('2025-10-30T10:00:00', null))).toBe(24);
+    expect(horasDePolitica({ deposit: null })).toBe(24);
+  });
+
   it('la seña vuelve con 24 h o más de anticipación, como en el back', () => {
-    expect(limiteDevolucion({ startDatetime: '2025-10-29T11:00:00' })).toEqual(
+    expect(limiteDevolucion({ startDatetime: '2025-10-29T11:00:00', deposit: null })).toEqual(
       new Date(2025, 9, 28, 11, 0),
     );
-    expect(seDevuelveLaSena({ startDatetime: '2025-10-29T10:00:00' }, AHORA)).toBe(true);
-    expect(seDevuelveLaSena({ startDatetime: '2025-10-29T09:59:00' }, AHORA)).toBe(false);
+    expect(seDevuelveLaSena(conSena('2025-10-29T10:00:00', 24), AHORA)).toBe(true);
+    expect(seDevuelveLaSena(conSena('2025-10-29T09:59:00', 24), AHORA)).toBe(false);
+  });
+
+  it('con 48 h la cuenta cambia: justo 48 h antes todavía vuelve, un minuto menos ya no', () => {
+    // ahora es el martes 28/10 a las 10:00
+    expect(limiteDevolucion(conSena('2025-10-30T10:00:00', 48))).toEqual(
+      new Date(2025, 9, 28, 10, 0),
+    );
+    expect(seDevuelveLaSena(conSena('2025-10-30T10:00:00', 48), AHORA)).toBe(true);
+    expect(seDevuelveLaSena(conSena('2025-10-30T09:59:00', 48), AHORA)).toBe(false);
+    // el mismo turno con 24 h sí devolvería
+    expect(seDevuelveLaSena(conSena('2025-10-30T09:59:00', 24), AHORA)).toBe(true);
+  });
+
+  it('con 96 h hacen falta cuatro días', () => {
+    expect(seDevuelveLaSena(conSena('2025-11-01T10:00:00', 96), AHORA)).toBe(true);
+    expect(seDevuelveLaSena(conSena('2025-10-31T10:00:00', 96), AHORA)).toBe(false);
+  });
+
+  it('un turno sin seña o con seña de $0 no tiene seña que avisar', () => {
+    expect(tieneSena({ deposit: sena(24) })).toBe(true);
+    expect(tieneSena({ deposit: sena(24, 0) })).toBe(false);
+    expect(tieneSena({ deposit: null })).toBe(false);
   });
 });

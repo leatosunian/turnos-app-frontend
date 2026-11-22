@@ -9,6 +9,11 @@ export interface DepositResponse {
   amount: number;
   status: DepositStatus;
   paidAt: string | null;
+  /**
+   * Horas de anticipación con las que cancelar devuelve la seña, las que regían cuando se reservó
+   * el turno (24, 48, 72 o 96). Si el negocio cambia la política después, esta no cambia.
+   */
+  cancellationNoticeHours?: number | null;
 }
 
 export interface AppointmentResponse {

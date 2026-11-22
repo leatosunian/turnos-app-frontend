@@ -159,6 +159,25 @@ describe('NegocioPage', () => {
     expect(texto).not.toContain('Reservar y pagar seña');
     expect(texto).not.toContain('Tenés 30 minutos');
     expect(texto).toContain('el turno queda confirmado al reservar');
+    // sin seña no hay política de devolución que mostrar
+    expect(texto).not.toContain('Cancelación sin costo');
+  });
+
+  it('muestra la política de cancelación del negocio', async () => {
+    httpMock
+      .expectOne(`${API}/businesses/slug/estudio-malbec`)
+      .flush({ ...NEGOCIO, cancellationNoticeHours: 48 });
+    httpMock.expectOne(`${API}/businesses/n-1/services`).flush([CORTE]);
+    await refrescar();
+    httpMock.expectOne((r) => r.params.get('serviceId') === 's-1').flush(LIBRES);
+    await refrescar();
+
+    expect(el().textContent).toContain('Cancelación sin costo hasta 48 h antes');
+  });
+
+  it('un negocio sin política guardada muestra la de siempre, 24 h', async () => {
+    await cargar();
+    expect(el().textContent).toContain('Cancelación sin costo hasta 24 h antes');
   });
 
   it('elige el primer día con horarios libres y los separa en mañana y tarde', async () => {

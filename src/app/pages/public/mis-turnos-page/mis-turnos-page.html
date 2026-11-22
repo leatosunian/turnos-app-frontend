@@ -80,7 +80,8 @@
                     · Si no pagás la seña, el horario se libera.
                   }
                 </span>
-                @if (turno.status === 'BOOKED' && turno.deposit) {
+                <!-- sin seña (servicio con 0 %) no hay nada pagado que mostrar -->
+                @if (turno.status === 'BOOKED' && turno.deposit && tieneSena(turno)) {
                   <span
                     class="flex justify-between gap-3 rounded-control bg-app px-3 py-2.5 text-[13px] text-muted lg:block lg:bg-transparent lg:p-0"
                   >
@@ -125,7 +126,7 @@
                       </button>
                     }
                   </div>
-                  @if (sePuedeCancelar(turno)) {
+                  @if (sePuedeCancelar(turno) && tieneSena(turno)) {
                     <span class="text-small text-muted">
                       @if (seDevuelve(turno)) {
                         Si cancelás
@@ -136,7 +137,7 @@
                         }
                         antes de las {{ limite(turno) | hora }}, te devolvemos la seña.
                       } @else {
-                        Faltan menos de 24 h: si cancelás, la seña no se devuelve.
+                        Faltan menos de {{ horas(turno) }} h: si cancelás, la seña no se devuelve.
                       }
                     </span>
                   }
@@ -227,14 +228,14 @@
       {{ titulo(turno) }}, {{ turno.startDatetime | fecha: 'corta' }} a las
       {{ turno.startDatetime | hora }}.
     </p>
-    @if (turno.deposit) {
+    @if (turno.deposit && tieneSena(turno)) {
       <p class="mt-2">
         @if (seDevuelve(turno)) {
-          Faltan 24 h o más, así que te devolvemos la seña de
+          Faltan {{ horas(turno) }} h o más, así que te devolvemos la seña de
           <span class="font-mono text-fg">{{ turno.deposit.amount | monto }}</span
           >.
         } @else {
-          Faltan menos de 24 h, así que la seña de
+          Faltan menos de {{ horas(turno) }} h, así que la seña de
           <span class="font-mono text-fg">{{ turno.deposit.amount | monto }}</span> no se devuelve.
         }
       </p>

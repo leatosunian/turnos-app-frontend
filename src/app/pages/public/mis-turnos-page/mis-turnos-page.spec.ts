@@ -176,9 +176,85 @@ describe('MisTurnosPage', () => {
 
     expect(servicio.cancelar).toHaveBeenCalledWith('maniana');
     expect(el().querySelector('[role="alertdialog"]')).toBeNull();
-    expect(texto()).toContain('Cancelaste el turno. Te devolvemos la seña.');
+    expect(texto()).toContain('Cancelaste el turno. Seña devuelta: te la reintegramos.');
     expect(texto()).toContain('Próximos · 0');
     expect(texto()).toContain('Seña devuelta');
+  });
+
+  // el jueves 30 a las 11:00 con la política de 48 h que guardó la seña: faltan 49 h
+  const CON_48 = turno('con48', 'BOOKED', '2025-10-30T11:00:00', {
+    deposit: {
+      id: 'd-48',
+      amount: 3750,
+      status: 'PAID',
+      paidAt: null,
+      cancellationNoticeHours: 48,
+    },
+  });
+  // el miércoles 29 a las 11:00 con 48 h: faltan 25 h, con 24 h se devolvería pero con 48 no
+  const MANIANA_48 = turno('maniana48', 'BOOKED', '2025-10-29T11:00:00', {
+    deposit: {
+      id: 'd-m48',
+      amount: 3750,
+      status: 'PAID',
+      paidAt: null,
+      cancellationNoticeHours: 48,
+    },
+  });
+
+  it('usa las horas de la política guardada en la seña, no 24 h fijas', async () => {
+    await crear([MANIANA_48, CON_48]);
+    const [maniana, jueves] = articulos().map((a) => a.textContent!.replace(/\s+/g, ' '));
+
+    expect(maniana).toContain('Faltan menos de 48 h: si cancelás, la seña no se devuelve.');
+    expect(jueves).toContain('Si cancelás hoy antes de las 11:00, te devolvemos la seña.');
+
+    boton('Cancelar turno', articulos()[0])!.click();
+    await refrescar();
+    expect(el().querySelector('[role="alertdialog"]')!.textContent!.replace(/\s+/g, ' ')).toContain(
+      'Faltan menos de 48 h, así que la seña de $3.750 no se devuelve.',
+    );
+  });
+
+  it('después de cancelar muestra lo que resolvió el back: seña retenida', async () => {
+    // el front calcula que se devuelve, pero el back dice FORFEITED: manda el back
+    await crear([MANIANA]);
+    servicio.cancelar.mockReturnValue(
+      of({
+        ...MANIANA,
+        status: 'CANCELLED',
+        deposit: { ...MANIANA.deposit!, status: 'FORFEITED' },
+      }),
+    );
+
+    boton('Cancelar turno')!.click();
+    await refrescar();
+    boton('Cancelar turno', el().querySelector('[role="alertdialog"]')!)!.click();
+    await refrescar();
+
+    expect(texto()).toContain('Cancelaste el turno. Seña retenida: queda para el negocio.');
+    expect(texto()).toContain('Seña retenida');
+  });
+
+  it('un turno sin seña no habla de devolverla', async () => {
+    const SIN_SENA = turno('sin-sena', 'BOOKED', '2025-10-30T11:00:00', {
+      deposit: { id: 'd-0', amount: 0, status: 'PAID', paidAt: null, cancellationNoticeHours: 24 },
+    });
+    await crear([SIN_SENA]);
+    // ni "Seña pagada $0" ni la política
+    expect(articulos()[0].textContent!.toLowerCase()).not.toContain('seña');
+
+    servicio.cancelar.mockReturnValue(of({ ...SIN_SENA, status: 'CANCELLED' }));
+    boton('Cancelar turno')!.click();
+    await refrescar();
+    expect(el().querySelector('[role="alertdialog"]')!.textContent!.toLowerCase()).not.toContain(
+      'seña',
+    );
+    boton('Cancelar turno', el().querySelector('[role="alertdialog"]')!)!.click();
+    await refrescar();
+
+    expect(texto()).toContain('Cancelaste el turno.');
+    expect(texto()).not.toContain('Seña devuelta');
   });
 
   it('confirmar dos veces seguidas cancela una sola vez', async () => {

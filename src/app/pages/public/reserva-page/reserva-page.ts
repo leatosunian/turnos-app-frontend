@@ -6,6 +6,7 @@ import { interval } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { senaDeLaReserva } from '../../../core/models/reserva';
 import { AppointmentResponse } from '../../../core/models/turno';
+import { horasDePolitica, tieneSena } from '../../../core/models/turno-cliente';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { AuthService } from '../../../core/services/auth-service';
 import { Boton } from '../../../shared/components/boton/boton';
@@ -78,6 +79,16 @@ export class ReservaPage {
   protected readonly sena = computed(() => {
     const monto = this.turno()?.deposit?.amount;
     return monto === undefined || monto === null ? null : Number(monto);
+  });
+  /** Las horas de la política con la que se reservó, guardadas en la seña (24 si no vienen). */
+  protected readonly horasPolitica = computed(() => {
+    const turno = this.turno();
+    return turno ? horasDePolitica(turno) : null;
+  });
+  /** Sin seña no hay nada que devolver: la política no se muestra. */
+  protected readonly muestraPolitica = computed(() => {
+    const turno = this.turno();
+    return !!turno && tieneSena(turno);
   });
   protected readonly enElLocal = computed(() => {
     const turno = this.turno();
