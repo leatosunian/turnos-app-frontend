@@ -53,9 +53,12 @@
                 }
               </li>
             }
-            <li class="rounded-full bg-surface-2 px-3.5 py-2 text-fg-2">
-              Cancelación sin costo hasta 24 h
-            </li>
+            <!-- sin seña no hay nada que devolver, así que la política no se muestra -->
+            @if (!sinSena()) {
+              <li class="rounded-full bg-surface-2 px-3.5 py-2 text-fg-2">
+                Cancelación sin costo hasta {{ horasPolitica() }} h antes
+              </li>
+            }
           </ul>
         </header>
         @if (negocio.description) {

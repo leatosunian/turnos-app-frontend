@@ -6,9 +6,11 @@ import { ApiError } from '../../../core/models/api-error';
 import { AppointmentResponse } from '../../../core/models/turno';
 import {
   esProximo,
+  horasDePolitica,
   limiteDevolucion,
   sePuedeCancelar,
   seDevuelveLaSena,
+  tieneSena,
 } from '../../../core/models/turno-cliente';
 import { AppointmentService } from '../../../core/services/appointment-service';
 import { AvisoVacio } from '../../../shared/components/aviso-vacio/aviso-vacio';
@@ -142,6 +144,16 @@ export class MisTurnosPage implements OnInit {
     return seDevuelveLaSena(turno, this.ahora());
   }
 
+  /** Las horas de la política con la que se reservó, guardadas en la seña. */
+  protected horas(turno: AppointmentResponse): number {
+    return horasDePolitica(turno);
+  }
+
+  /** Sin seña (o de $0) no se avisa nada sobre devolverla. */
+  protected tieneSena(turno: AppointmentResponse): boolean {
+    return tieneSena(turno);
+  }
+
   protected limite(turno: AppointmentResponse): Date {
     return limiteDevolucion(turno);
   }
@@ -160,14 +172,14 @@ export class MisTurnosPage implements OnInit {
       case 'REFUNDED':
         return 'Seña devuelta';
       case 'FORFEITED':
-        return 'Seña perdida';
+        return 'Seña retenida';
       default:
         return null;
     }
   }
 
   protected pedirCancelar(turno: AppointmentResponse): void {
-    // la regla de 24 h se mide contra este momento, no contra el de la carga
+    // la política de la seña se mide contra este momento, no contra el de la carga
     this.ahora.set(new Date());
     this.errorCancelar.set('');
     this.aCancelar.set(turno);
@@ -189,7 +201,8 @@ export class MisTurnosPage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (cancelado) => {
-          // si el back no manda la seña, se mantiene la que había y se usa la regla de 24 h
+          // Lo que cuenta es lo que resolvió el back (REFUNDED o FORFEITED). Si no manda la seña,
+          // se mantiene la que había y se usa la política guardada en ella
           const deposit = cancelado.deposit ?? turno.deposit;
           const devuelta = cancelado.deposit
             ? cancelado.deposit.status === 'REFUNDED'
@@ -198,9 +211,11 @@ export class MisTurnosPage implements OnInit {
             turnos.map((t) => (t.id === turno.id ? { ...t, ...cancelado, deposit } : t)),
           );
           this.aviso.set(
-            devuelta
-              ? 'Cancelaste el turno. Te devolvemos la seña.'
-              : 'Cancelaste el turno. La seña no se devuelve.',
+            !tieneSena({ deposit })
+              ? 'Cancelaste el turno.'
+              : devuelta
+                ? 'Cancelaste el turno. Seña devuelta: te la reintegramos.'
+                : 'Cancelaste el turno. Seña retenida: queda para el negocio.',
           );
           this.cancelando.set(false);
           this.aCancelar.set(null);

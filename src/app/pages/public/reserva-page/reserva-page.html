@@ -211,9 +211,11 @@
             </div>
           </dl>
         </div>
-        <div class="hidden lg:block">
-          <ng-container [ngTemplateOutlet]="politica" />
-        </div>
+        @if (muestraPolitica()) {
+          <div class="hidden lg:block">
+            <ng-container [ngTemplateOutlet]="politica" />
+          </div>
+        }
       </section>
 
       <aside
@@ -247,9 +249,11 @@
             </div>
           </dl>
         }
-        <div class="lg:hidden">
-          <ng-container [ngTemplateOutlet]="politica" />
-        </div>
+        @if (muestraPolitica()) {
+          <div class="lg:hidden">
+            <ng-container [ngTemplateOutlet]="politica" />
+          </div>
+        }
 
         @if (vencida()) {
           <p
@@ -309,11 +313,11 @@
     </span>
     <p class="flex gap-2.5">
       <span class="mt-1.75 size-1.75 shrink-0 rounded-full bg-success" aria-hidden="true"></span>
-      Cancelás 24 h antes o más: te devolvemos la seña.
+      Si cancelás con {{ horasPolitica() }} h o más de anticipación, te devolvemos la seña.
     </p>
     <p class="flex gap-2.5">
       <span class="mt-1.75 size-1.75 shrink-0 rounded-full bg-danger" aria-hidden="true"></span>
-      Cancelás con menos de 24 h: la seña queda para el negocio.
+      Si cancelás con menos de {{ horasPolitica() }} h, la seña queda para el negocio.
     </p>
     <p class="flex gap-2.5">
       <span class="mt-1.75 size-1.75 shrink-0 rounded-full bg-info" aria-hidden="true"></span>

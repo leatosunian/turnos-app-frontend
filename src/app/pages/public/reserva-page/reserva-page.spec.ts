@@ -104,12 +104,51 @@ describe('ReservaPage', () => {
     expect(texto()).toContain('Tomás');
     expect(texto()).toContain('$12.500');
     expect(texto()).toContain('$8.750');
-    expect(texto()).toContain('Cancelás 24 h antes o más');
+    // sin política en la seña, la de siempre: 24 h
+    expect(texto()).toContain('Si cancelás con 24 h o más de anticipación, te devolvemos la seña');
     expect(botonPagar()!.textContent).toContain('Pagar $3.750');
     // expiresAt se arma con la hora real (ahora mas 25 minutos) y el contador la compara con la
     // hora del momento en que se dibuja. Con toda la suite corriendo a veces pasa un segundo entre
     // una cosa y la otra y el contador ya muestra 24:59, asi que se aceptan los dos
     expect(el().querySelector('[role="timer"]')?.textContent?.trim()).toMatch(/^(25:00|24:5\d)$/);
+  });
+
+  it('muestra la política con las horas que guardó la seña al reservar', async () => {
+    await crear(
+      of(
+        turno({
+          deposit: {
+            id: 'd-1',
+            amount: 3750,
+            status: 'PENDING',
+            paidAt: null,
+            cancellationNoticeHours: 48,
+          },
+        }),
+      ),
+    );
+
+    expect(texto()).toContain('Si cancelás con 48 h o más de anticipación, te devolvemos la seña');
+    expect(texto()).toContain('Si cancelás con menos de 48 h, la seña queda para el negocio');
+    expect(texto()).not.toContain('24 h');
+  });
+
+  it('si el turno no tiene seña, no muestra la política', async () => {
+    await crear(
+      of(
+        turno({
+          deposit: {
+            id: 'd-1',
+            amount: 0,
+            status: 'PENDING',
+            paidAt: null,
+            cancellationNoticeHours: 48,
+          },
+        }),
+      ),
+    );
+
+    expect(el().querySelector('[aria-label="Política de seña"]')).toBeNull();
   });
 
   it('no usa los montos que lleguen al navegar: muestra los del back', async () => {
