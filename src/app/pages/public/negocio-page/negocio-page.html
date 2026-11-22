@@ -59,6 +59,12 @@
                 Cancelación sin costo hasta {{ horasPolitica() }} h antes
               </li>
             }
+            <!-- con 0 h se puede reservar hasta que empiece el turno, no hay nada que avisar -->
+            @if (horasAnticipacion()) {
+              <li class="rounded-full bg-surface-2 px-3.5 py-2 text-fg-2">
+                Reservas con al menos {{ horasAnticipacion() }} h de anticipación
+              </li>
+            }
           </ul>
         </header>
         @if (negocio.description) {
@@ -147,6 +153,12 @@
                 </div>
               }
             </div>
+            @if (horasAnticipacion()) {
+              <p class="-mt-2 text-small text-muted">
+                Este negocio pide reservar con al menos {{ textoAnticipacion() }} de anticipación,
+                así que los horarios más cercanos no aparecen.
+              </p>
+            }
 
             @if (!servicioId()) {
               <p class="py-6 text-center text-muted">Elegí un servicio para ver los horarios.</p>
@@ -214,13 +226,6 @@
                       {{ horariosDelDia().length === 1 ? 'horario libre' : 'horarios libres' }}
                     </span>
                   </div>
-
-                  @if (horarioOcupado()) {
-                    <div role="alert" class="rounded-card bg-danger-soft px-4 py-3">
-                      <p class="font-semibold text-danger-fg">Ese horario se acaba de ocupar</p>
-                      <p class="text-small text-fg-2">Elegí otro de los que siguen libres.</p>
-                    </div>
-                  }
 
                   @for (grupo of gruposHorario(); track grupo.nombre) {
                     <div
@@ -350,6 +355,25 @@
                   <dd class="font-mono">{{ turno.price - (sena() ?? 0) | monto }}</dd>
                 </div>
               </dl>
+            } @else if (horarioPerdido(); as perdido) {
+              <!-- va acá y no junto a los horarios porque, si no queda ninguno libre, esa parte no se ve -->
+              <div role="alert" class="rounded-card bg-danger-soft px-4 py-3">
+                <p class="font-semibold text-danger-fg">{{ perdido.titulo }}</p>
+                <p class="text-small text-fg-2">{{ perdido.detalle }}</p>
+              </div>
+            } @else if (turnoVencido()) {
+              <!-- el horario elegido quedó dentro de la anticipación mientras el cliente miraba -->
+              <div role="alert" class="rounded-card bg-danger-soft px-4 py-3">
+                <p class="font-semibold text-danger-fg">Ese horario ya no se puede reservar</p>
+                <p class="text-small text-fg-2">
+                  @if (horasAnticipacion()) {
+                    El negocio pide reservar con al menos {{ textoAnticipacion() }} de anticipación.
+                  } @else {
+                    El turno ya empezó.
+                  }
+                  Elegí otro horario.
+                </p>
+              </div>
             } @else {
               <p class="text-center text-small text-muted">Elegí servicio, día y horario.</p>
             }

@@ -12,6 +12,7 @@ import { BusinessResponse } from '../../../core/models/negocio';
 import { ServResponse } from '../../../core/models/servicio';
 import { AppointmentResponse } from '../../../core/models/turno';
 import { NegocioPage } from './negocio-page';
+import { claveDeFecha } from './reserva';
 
 registerLocaleData(localeEsAr);
 
@@ -48,6 +49,18 @@ function libre(id: string, inicio: string): AppointmentResponse {
 
 const LIBRES = [libre('t-1', '2030-04-10T11:00:00'), libre('t-2', '2030-04-10T15:00:00')];
 
+const MINUTO = 60 * 1000;
+
+/** Fecha y hora sin zona, como las manda el back, a tantas horas y minutos de ahora. */
+function dentroDe(horas: number, minutos = 0): string {
+  const fecha = new Date(Date.now() + (horas * 60 + minutos) * MINUTO);
+  const dd = (n: number) => String(n).padStart(2, '0');
+  return `${claveDeFecha(fecha)}T${dd(fecha.getHours())}:${dd(fecha.getMinutes())}:00`;
+}
+
+/** La hora como se ve en el botón del horario: 2030-04-10T11:00:00 es 11:00. */
+const hora = (inicio: string) => inicio.slice(11, 16);
+
 @Component({ template: '' })
 class PagoFalso {}
 
@@ -72,7 +85,10 @@ describe('NegocioPage', () => {
     await harness.navigateByUrl('/estudio-malbec');
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    vi.restoreAllMocks();
+  });
 
   function el(): HTMLElement {
     return harness.routeNativeElement!;
@@ -83,8 +99,8 @@ describe('NegocioPage', () => {
     await harness.fixture.whenStable();
   }
 
-  async function cargar(libres = LIBRES): Promise<void> {
-    httpMock.expectOne(`${API}/businesses/slug/estudio-malbec`).flush(NEGOCIO);
+  async function cargar(libres = LIBRES, negocio = NEGOCIO): Promise<void> {
+    httpMock.expectOne(`${API}/businesses/slug/estudio-malbec`).flush(negocio);
     httpMock.expectOne(`${API}/businesses/n-1/services`).flush([CORTE]);
     await refrescar();
     httpMock.expectOne((r) => r.url === `${API}/businesses/n-1/appointments/public`).flush(libres);
@@ -298,5 +314,95 @@ describe('NegocioPage', () => {
     expect(el().textContent).toContain('Ese horario se acaba de ocupar');
     expect(diaElegido()?.textContent?.trim()).toBe('24');
     expect(boton('15:30')).toBeTruthy();
+  });
+
+  describe('anticipación mínima', () => {
+    const CON_2_HORAS = { ...NEGOCIO, minBookingNoticeHours: 2 };
+
+    /** Corre el reloj de la página: Date.now() pasa a devolver tantos minutos más adelante. */
+    async function pasan(minutos: number): Promise<void> {
+      const ahora = Date.now();
+      vi.spyOn(Date, 'now').mockReturnValue(ahora + minutos * MINUTO);
+      harness.routeDebugElement!.componentInstance['actualizarHora']();
+      await refrescar();
+    }
+
+    it('avisa en el perfil con cuánta anticipación hay que reservar', async () => {
+      await cargar(LIBRES, CON_2_HORAS);
+      const texto = el().textContent!.replace(/\s+/g, ' ');
+
+      expect(texto).toContain('Reservas con al menos 2 h de anticipación');
+      expect(texto).toContain('pide reservar con al menos 2 horas de anticipación');
+    });
+
+    it('sin anticipación (o en negocios de antes) no avisa nada', async () => {
+      await cargar(LIBRES, { ...NEGOCIO, minBookingNoticeHours: 0 });
+
+      expect(el().textContent).not.toContain('de anticipación');
+    });
+
+    it('no muestra los horarios que empiezan dentro de la anticipación', async () => {
+      // el back todavía no filtra (o la PC y el servidor no tienen la misma hora): igual no se ve
+      await cargar([libre('t-1', dentroDe(1))], CON_2_HORAS);
+
+      expect(el().textContent).toContain('No hay horarios libres para este servicio');
+    });
+
+    it('muestra los horarios que cumplen la anticipación', async () => {
+      const enTres = libre('t-3', dentroDe(3));
+      await cargar([enTres], CON_2_HORAS);
+
+      expect(boton(hora(enTres.startDatetime))).toBeTruthy();
+    });
+
+    it('si el horario elegido queda dentro de la anticipación mientras mira, avisa y no deja reservar', async () => {
+      const justo = libre('t-1', dentroDe(2, 5));
+      const despues = libre('t-2', dentroDe(2, 50));
+      await cargar([justo, despues], CON_2_HORAS);
+      boton(hora(justo.startDatetime)).click();
+      await refrescar();
+      expect(boton('Reservar').disabled).toBe(false);
+
+      await pasan(10);
+
+      const texto = el().textContent!.replace(/\s+/g, ' ');
+      expect(texto).toContain('Ese horario ya no se puede reservar');
+      expect(texto).toContain('El negocio pide reservar con al menos 2 horas de anticipación');
+      expect(() => boton(hora(justo.startDatetime))).toThrow();
+      expect(boton(hora(despues.startDatetime))).toBeTruthy();
+      expect(boton('Reservar').disabled).toBe(true);
+    });
+
+    it('si el back rechaza la reserva por la anticipación, muestra su mensaje y no "se ocupó"', async () => {
+      const enTres = libre('t-3', dentroDe(3));
+      await cargar([enTres], CON_2_HORAS);
+      boton(hora(enTres.startDatetime)).click();
+      await escribir('Nombre', 'Federico Paz');
+      await escribir('Email', 'fede@mail.com');
+      boton('Reservar').click();
+      await refrescar();
+
+      // el cliente tardó una hora y media en completar los datos
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 90 * MINUTO);
+      httpMock
+        .expectOne(`${API}/appointments/t-3/book`)
+        .flush(
+          {
+            message:
+              'El turno ya no está disponible: este negocio pide reservar con al menos 2 horas de anticipación.',
+          },
+          { status: 409, statusText: 'Conflict' },
+        );
+      httpMock.expectOne((r) => r.url === `${API}/businesses/n-1/appointments/public`).flush([]);
+      await refrescar();
+
+      const texto = el().textContent!;
+      expect(texto).toContain('Ese horario ya no se puede reservar');
+      expect(texto).toContain(
+        'El turno ya no está disponible: este negocio pide reservar con al menos 2 horas de anticipación.',
+      );
+      expect(texto).not.toContain('Ese horario se acaba de ocupar');
+      expect(boton('Reservar').disabled).toBe(true);
+    });
   });
 });
