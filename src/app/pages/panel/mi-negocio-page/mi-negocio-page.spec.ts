@@ -110,6 +110,14 @@ describe('MiNegocioPage', () => {
     )!;
   }
 
+  // un boton de los selectores de politicas, buscado por la etiqueta del grupo y su texto.
+  // Por ejemplo opcion('Política de cancelación', '48 h')
+  function opcion(grupo: string, texto: string): HTMLButtonElement {
+    return [
+      ...el.querySelectorAll<HTMLButtonElement>(`app-segmentado[aria-label="${grupo}"] button`),
+    ].find((b) => b.textContent?.trim() === texto)!;
+  }
+
   it('carga los datos del negocio y marca sus rubros', async () => {
     await cargar(negocio());
 
@@ -182,6 +190,8 @@ describe('MiNegocioPage', () => {
       scheduleEnd: null,
       scheduleDaysToCreate: 15,
       scheduleAnticipation: 2,
+      cancellationNoticeHours: 24,
+      minBookingNoticeHours: 0,
     });
     put.flush(negocio({ phone: '1145550199' }));
 
@@ -258,6 +268,91 @@ describe('MiNegocioPage', () => {
     expect(el.textContent).toContain('Cambios sin guardar');
   });
 
+  describe('políticas', () => {
+    it('marca las políticas guardadas y explica cada una', async () => {
+      await cargar(negocio({ cancellationNoticeHours: 72, minBookingNoticeHours: 2 }));
+
+      expect(opcion('Política de cancelación', '72 h').getAttribute('aria-pressed')).toBe('true');
+      expect(opcion('Anticipación mínima para reservar', '2 h').getAttribute('aria-pressed')).toBe(
+        'true',
+      );
+      expect(el.textContent).toContain('Si el cliente cancela con 72 h o más de anticipación');
+      expect(el.textContent).toContain('reservar con al menos 2 h de anticipación');
+    });
+
+    it('si el negocio no las tiene cargadas muestra 24 h y Sin mínimo, sin marcar cambios', async () => {
+      await cargar(negocio({ cancellationNoticeHours: null }));
+
+      expect(opcion('Política de cancelación', '24 h').getAttribute('aria-pressed')).toBe('true');
+      expect(
+        opcion('Anticipación mínima para reservar', 'Sin mínimo').getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(el.textContent).toContain('pueden reservar cualquier turno libre');
+      expect(el.textContent).not.toContain('Cambios sin guardar');
+    });
+
+    it('al cambiar una política aparece la barra y cambia la explicación', async () => {
+      await cargar(negocio());
+      opcion('Política de cancelación', '48 h').click();
+      await refrescar();
+
+      expect(el.textContent).toContain('Cambios sin guardar');
+      expect(el.textContent).toContain('Si el cliente cancela con 48 h o más de anticipación');
+    });
+
+    it('guarda sólo las políticas con el PUT y avisa que se guardó', async () => {
+      await cargar(negocio());
+      opcion('Política de cancelación', '96 h').click();
+      opcion('Anticipación mínima para reservar', '12 h').click();
+      await refrescar();
+
+      boton('Guardar')!.click();
+
+      const put = httpMock.expectOne(`${API}/businesses/n-1`);
+      expect(put.request.body).toEqual(
+        expect.objectContaining({ cancellationNoticeHours: 96, minBookingNoticeHours: 12 }),
+      );
+      put.flush(negocio({ cancellationNoticeHours: 96, minBookingNoticeHours: 12 }));
+      await refrescar();
+
+      expect(el.querySelector('[role="status"]')?.textContent).toContain('Cambios guardados.');
+      expect(el.textContent).not.toContain('Cambios sin guardar');
+    });
+
+    it('descartar vuelve a las políticas guardadas', async () => {
+      await cargar(negocio({ cancellationNoticeHours: 48 }));
+      opcion('Política de cancelación', '96 h').click();
+      await refrescar();
+
+      boton('Descartar')!.click();
+      await refrescar();
+
+      expect(opcion('Política de cancelación', '48 h').getAttribute('aria-pressed')).toBe('true');
+      expect(el.textContent).not.toContain('Cambios sin guardar');
+    });
+
+    it('si el back rechaza el valor muestra su error y no avisa que se guardó', async () => {
+      await cargar(negocio());
+      opcion('Política de cancelación', '72 h').click();
+      await refrescar();
+
+      boton('Guardar')!.click();
+      httpMock.expectOne(`${API}/businesses/n-1`).flush(
+        {
+          status: 400,
+          message: 'La política de cancelación tiene que ser 24, 48, 72 o 96 horas',
+        },
+        { status: 400, statusText: 'Bad Request' },
+      );
+      await refrescar();
+
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'La política de cancelación tiene que ser',
+      );
+      expect(el.querySelector('[role="status"]')).toBeNull();
+    });
+  });
+
   describe('sin negocio', () => {
     it('muestra el formulario para crearlo, sin dar de baja', async () => {
       await cargar(null);
@@ -285,6 +380,8 @@ describe('MiNegocioPage', () => {
         email: 'hola@malbec.com',
         phone: '1145550182',
         description: '',
+        cancellationNoticeHours: 24,
+        minBookingNoticeHours: 0,
         scheduleDaysToCreate: DIAS_A_GENERAR,
       });
       post.flush(negocio({ businessTypes: [] }));
