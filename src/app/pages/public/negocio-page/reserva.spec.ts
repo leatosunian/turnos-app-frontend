@@ -2,10 +2,12 @@ import { AppointmentResponse } from '../../../core/models/turno';
 import {
   agruparPorDia,
   claveDeFecha,
+  horasEnTexto,
   mesDeClave,
   montoSena,
   porcentajeSena,
   nombreRubro,
+  reservables,
   semanasDelMes,
   separarPorTurno,
 } from './reserva';
@@ -75,5 +77,40 @@ describe('reserva', () => {
   it('nombreRubro traduce los rubros que el back trae en inglés', () => {
     expect(nombreRubro({ id: '1', name: 'GYM', deleted: false })).toBe('Gimnasio');
     expect(nombreRubro({ id: '2', name: 'TATTOO', deleted: false })).toBe('Tatuajes');
+  });
+
+  describe('reservables', () => {
+    // el ejemplo del ticket: son las 15:00
+    const A_LAS_15 = new Date(2026, 10, 21, 15, 0).getTime();
+    const ids = (lista: AppointmentResponse[]) => lista.map((t) => t.id);
+    const turnos = [
+      turno('pasado', '2026-11-21T14:30:00'),
+      turno('16', '2026-11-21T16:00:00'),
+      turno('17', '2026-11-21T17:00:00'),
+      turno('17-30', '2026-11-21T17:30:00'),
+      turno('manana', '2026-11-22T10:00:00'),
+    ];
+
+    it('con 2 h, a las 15:00 el turno de las 16:00 ya no se puede reservar', () => {
+      expect(ids(reservables(turnos, A_LAS_15, 2))).toEqual(['17-30', 'manana']);
+    });
+
+    it('un turno justo en el límite tampoco: el back pide que empiece después', () => {
+      expect(ids(reservables(turnos, A_LAS_15, 2))).not.toContain('17');
+    });
+
+    it('con 24 h solo quedan los que empiezan después de mañana a esta misma hora', () => {
+      expect(ids(reservables(turnos, A_LAS_15, 24))).toEqual([]);
+      expect(ids(reservables(turnos, A_LAS_15 - 6 * 60 * 60 * 1000, 24))).toEqual(['manana']);
+    });
+
+    it('con 0 h es como antes: solo saca los que ya empezaron', () => {
+      expect(ids(reservables(turnos, A_LAS_15, 0))).toEqual(['16', '17', '17-30', 'manana']);
+    });
+  });
+
+  it('horasEnTexto usa singular para 1 hora', () => {
+    expect(horasEnTexto(1)).toBe('1 hora');
+    expect(horasEnTexto(12)).toBe('12 horas');
   });
 });

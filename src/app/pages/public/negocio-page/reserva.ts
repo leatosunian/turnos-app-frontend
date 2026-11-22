@@ -159,6 +159,30 @@ export function nombreRubro(rubro: BusinessTypeResponse): string {
   return NOMBRES_RUBRO[nombre] ?? nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
 }
 
+const HORA_MS = 60 * 60 * 1000;
+
+// Los turnos que todavia se pueden reservar: los que empiezan despues de ahora mas las horas de
+// anticipacion que pide el negocio. Es la misma cuenta que hace el back en la lista publica y al
+// reservar. La pagina la vuelve a hacer cada tanto, asi un horario que queda dentro de la ventana
+// mientras el cliente mira deja de aparecer.
+// Por ejemplo con 2 h, a las 15:00 el turno de las 16:00 ya no se puede reservar y el de las
+// 17:30 si.
+// ahora: milisegundos, como los de Date.now()
+export function reservables(
+  turnos: AppointmentResponse[],
+  ahora: number,
+  horasAnticipacion: number,
+): AppointmentResponse[] {
+  const desde = ahora + horasAnticipacion * HORA_MS;
+  // el back manda la fecha sin zona horaria y new Date la toma como hora local, igual que el back
+  return turnos.filter((turno) => new Date(turno.startDatetime).getTime() > desde);
+}
+
+// Las horas de anticipacion en palabras: 1 queda "1 hora" y 12 queda "12 horas"
+export function horasEnTexto(horas: number): string {
+  return horas === 1 ? '1 hora' : `${horas} horas`;
+}
+
 // Las letras que van en el cuadrado de la cabecera: la primera letra de las dos primeras
 // palabras del nombre, en mayuscula. Barberia del Puerto queda BD.
 export function iniciales(nombre: string): string {

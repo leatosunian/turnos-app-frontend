@@ -20,6 +20,11 @@ export interface BusinessResponse {
   deleted: boolean;
   ownerId: string;
   businessTypes: BusinessTypeResponse[];
+  /**
+   * Con cuántas horas de anticipación como mínimo se puede reservar: 0, 1, 2, 4, 12 o 24. Si no
+   * viene (negocios de antes de la regla), es 0: se puede reservar hasta que empiece el turno.
+   */
+  minBookingNoticeHours?: number | null;
 }
 
 export interface BusinessRequest {
