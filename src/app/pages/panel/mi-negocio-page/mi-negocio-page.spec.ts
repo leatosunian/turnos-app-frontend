@@ -337,15 +337,13 @@ describe('MiNegocioPage', () => {
       await refrescar();
 
       boton('Guardar')!.click();
-      httpMock
-        .expectOne(`${API}/businesses/n-1`)
-        .flush(
-          {
-            status: 400,
-            message: 'La política de cancelación tiene que ser 24, 48, 72 o 96 horas',
-          },
-          { status: 400, statusText: 'Bad Request' },
-        );
+      httpMock.expectOne(`${API}/businesses/n-1`).flush(
+        {
+          status: 400,
+          message: 'La política de cancelación tiene que ser 24, 48, 72 o 96 horas',
+        },
+        { status: 400, statusText: 'Bad Request' },
+      );
       await refrescar();
 
       expect(el.querySelector('[role="alert"]')?.textContent).toContain(
