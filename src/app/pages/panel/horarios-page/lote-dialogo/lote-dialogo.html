@@ -1,0 +1,187 @@
+<app-dialogo titulo="Asignar en lote" [bloqueado]="creando()" (cerrado)="cancelado.emit()">
+  @if (!servicios().length) {
+    <p class="text-fg-2">Para armar la plantilla primero necesitás cargar al menos un servicio.</p>
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button appBoton variante="secundario" type="button" (click)="cancelado.emit()">
+        Cerrar
+      </button>
+      <a appBoton routerLink="/panel/servicios">Ir a servicios</a>
+    </div>
+  } @else if (!hayDiasAbiertos()) {
+    <p class="text-fg-2">
+      Todos los días están cerrados. Abrí al menos uno en su pestaña para poder asignarle turnos.
+    </p>
+    <div class="flex justify-end">
+      <button appBoton variante="secundario" type="button" (click)="cancelado.emit()">
+        Cerrar
+      </button>
+    </div>
+  } @else {
+    <!-- sin FormsModule el submit recargaria la pagina, por eso el preventDefault -->
+    <form (submit)="$event.preventDefault(); crear()" novalidate class="flex flex-col gap-4">
+      <p class="-mt-2 text-fg-2">
+        Crea varios turnos programados de una, uno por intervalo en cada día que elijas.
+      </p>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="flex flex-col gap-1">
+          <app-campo etiqueta="Servicio">
+            <select [disabled]="creando()" (change)="cambiarServicio($any($event.target).value)">
+              @for (opcion of servicios(); track opcion.id) {
+                <option [value]="opcion.id" [selected]="opcion.id === servicioId()">
+                  {{ opcion.name }}
+                </option>
+              }
+            </select>
+          </app-campo>
+          @if (servicio(); as s) {
+            <span class="text-small text-muted">
+              dura <span class="font-mono">{{ s.durationMinutes }} min</span> ·
+              <span class="font-mono">{{ s.price | monto }}</span>
+            </span>
+          }
+        </div>
+        <div class="flex flex-col gap-1">
+          <app-campo etiqueta="Profesional">
+            <select [disabled]="creando()" (change)="empleadoId.set($any($event.target).value)">
+              <option value="" [selected]="!empleadoId()">Sin asignar</option>
+              @for (empleado of equipo(); track empleado.id) {
+                <option [value]="empleado.id" [selected]="empleado.id === empleadoId()">
+                  {{ empleado.name }}
+                </option>
+              }
+            </select>
+          </app-campo>
+          <span class="text-small text-muted">opcional, puede quedar sin asignar</span>
+        </div>
+      </div>
+
+      <fieldset class="flex flex-col gap-1.5">
+        <legend class="mb-1.5 text-small text-muted">Días</legend>
+        <div class="flex flex-wrap gap-1.5">
+          @for (info of dias; track info.dia) {
+            @let abierto = !!semana()[info.numero]?.enabled;
+            @let elegido = elegidos().includes(info.numero);
+            <button
+              type="button"
+              [attr.aria-pressed]="elegido"
+              [disabled]="!abierto || creando()"
+              (click)="alternarDia(info.numero)"
+              class="h-8 rounded-full border px-3 text-[13px]"
+              [class]="
+                elegido
+                  ? 'border-accent bg-accent font-medium text-on-accent'
+                  : abierto
+                    ? 'border-line-strong text-fg-2 hover:text-fg'
+                    : 'border-dashed border-line-strong text-faint'
+              "
+            >
+              {{ info.corto }}{{ abierto ? '' : ' · cerrado' }}
+            </button>
+          }
+        </div>
+      </fieldset>
+
+      <div class="grid grid-cols-3 gap-3">
+        <app-campo etiqueta="Desde">
+          <select
+            [disabled]="creando()"
+            (change)="cambiarDesde($any($event.target).value)"
+            class="font-mono"
+          >
+            @for (hora of horasDesde(); track hora) {
+              <option [value]="hora" [selected]="hora === desde()">{{ hora }}</option>
+            }
+          </select>
+        </app-campo>
+        <app-campo etiqueta="Hasta">
+          <select
+            [disabled]="creando()"
+            (change)="hasta.set($any($event.target).value)"
+            class="font-mono"
+          >
+            @for (hora of horasHasta(); track hora) {
+              <option [value]="hora" [selected]="hora === hasta()">{{ hora }}</option>
+            }
+          </select>
+        </app-campo>
+        <app-campo etiqueta="Cada">
+          <select
+            [disabled]="creando()"
+            (change)="cada.set(+$any($event.target).value)"
+            class="font-mono"
+          >
+            @for (minutos of opcionesCada(); track minutos) {
+              <option [value]="minutos" [selected]="minutos === cada()">{{ minutos }} min</option>
+            }
+          </select>
+        </app-campo>
+      </div>
+
+      <!-- vista previa: se arma sola con cada cambio -->
+      <div aria-live="polite" class="flex flex-col gap-2 rounded-card bg-surface-2 p-3.5">
+        <span class="text-small text-fg-2">Vista previa · por día</span>
+        @if (horariosPorDia().length) {
+          <div class="flex flex-wrap gap-1.5">
+            @for (hora of horariosPorDia(); track hora) {
+              <span class="rounded-full bg-surface-3 px-2.5 py-0.5 font-mono text-small text-fg">
+                {{ hora }}
+              </span>
+            }
+          </div>
+        }
+        @if (problema(); as p) {
+          <p class="text-small text-muted">{{ p }}</p>
+        } @else {
+          <p class="text-small">{{ resumen() }}</p>
+        }
+        @for (aviso of avisos(); track aviso) {
+          <p class="flex gap-1.5 text-small text-danger-fg">
+            <span aria-hidden="true">●</span>
+            {{ aviso }}
+          </p>
+        }
+      </div>
+
+      @if (avance(); as a) {
+        <div class="flex items-center gap-2.5">
+          <div
+            role="progressbar"
+            aria-label="Turnos creados"
+            [attr.aria-valuenow]="a.hechos"
+            aria-valuemin="0"
+            [attr.aria-valuemax]="a.total"
+            class="h-1.5 flex-1 rounded-full bg-surface-3"
+          >
+            <div
+              class="h-1.5 rounded-full bg-accent transition-[width]"
+              [style.width.%]="porcentaje(a)"
+            ></div>
+          </div>
+          <span class="font-mono text-small text-fg-2">{{ a.hechos }} / {{ a.total }}</span>
+        </div>
+      }
+
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button
+          appBoton
+          variante="secundario"
+          type="button"
+          [disabled]="creando()"
+          (click)="cancelado.emit()"
+        >
+          Cancelar
+        </button>
+        <button appBoton type="submit" [disabled]="creando() || !!problema()">
+          @if (creando()) {
+            Creando…
+          } @else if (lote().aCrear.length === 1) {
+            Crear 1 turno
+          } @else {
+            Crear {{ lote().aCrear.length }} turnos
+          }
+        </button>
+      </div>
+    </form>
+  }
+</app-dialogo>

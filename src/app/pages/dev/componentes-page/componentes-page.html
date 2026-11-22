@@ -1,0 +1,115 @@
+<div class="mx-auto flex max-w-360 flex-col gap-10 px-5 py-10 lg:px-20 lg:py-14">
+  <div class="flex flex-col gap-2">
+    <app-pastilla tono="ambar">Para el equipo</app-pastilla>
+    <h1 class="text-h1">Componentes</h1>
+    <p class="max-w-160 text-muted">
+      Todo lo que está en <code class="font-mono text-fg-2">shared/components</code>, con sus
+      variantes. Si agregás uno, sumalo acá.
+    </p>
+  </div>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Botón</h2>
+    <div class="flex flex-wrap items-center gap-3">
+      <button appBoton type="button" [disabled]="guardando()" (click)="guardar()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+      <button appBoton variante="secundario" type="button">Cancelar</button>
+      <button appBoton variante="destructivo" type="button">Suspender</button>
+      <button appBoton type="button" disabled>Deshabilitado</button>
+      <a appBoton variante="secundario" routerLink="/ingresar">Link con forma de botón</a>
+    </div>
+    <div class="flex max-w-90 flex-col gap-3">
+      <button appBoton grande type="button">Reservar · 48 px</button>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Campo de texto</h2>
+    <div class="grid max-w-160 gap-4 sm:grid-cols-2">
+      <app-campo etiqueta="Nombre del negocio">
+        <input type="text" placeholder="Barbería Norte" />
+      </app-campo>
+      <app-campo etiqueta="Teléfono" error="Revisá el número: faltan dígitos.">
+        <input type="tel" value="11 4455" />
+      </app-campo>
+      <app-campo etiqueta="Rubro">
+        <select>
+          <option>Barbería</option>
+          <option>Estética</option>
+        </select>
+      </app-campo>
+      <app-campo etiqueta="Slug">
+        <input type="text" value="barberia-norte" disabled class="font-mono" />
+      </app-campo>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Estado de turno</h2>
+    <div class="flex flex-wrap gap-2">
+      @for (turno of turnos; track $index) {
+        <app-estado-turno [turno]="turno" />
+      }
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Horario</h2>
+    <div class="flex flex-wrap gap-2">
+      @for (h of horarios; track h) {
+        <button
+          appSlot
+          type="button"
+          [seleccionado]="h === horario()"
+          [disabled]="ocupados.includes(h)"
+          (click)="horario.set(h)"
+        >
+          {{ h }}
+        </button>
+      }
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button appSlot grande type="button">14:00</button>
+      <button appSlot grande seleccionado type="button">14:30</button>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Segmentado e interruptor</h2>
+    <div class="flex flex-wrap items-center gap-8">
+      <app-segmentado etiqueta="Vista" [opciones]="vistas" [(valor)]="vista" />
+      <div class="flex items-center gap-3">
+        <app-interruptor etiqueta="Atiende los sábados" [(encendido)]="atiendeSabados" />
+        <span class="text-fg-2">Sábados</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <app-interruptor etiqueta="Atiende los domingos" [(encendido)]="atiendeDomingos" />
+        <span class="text-fg-2">Domingos</span>
+      </div>
+      <app-interruptor etiqueta="Deshabilitado" disabled />
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Pastilla</h2>
+    <div class="flex flex-wrap gap-2">
+      <app-pastilla>Agenda automática</app-pastilla>
+      <app-pastilla tono="ambar">Hoy</app-pastilla>
+      <app-pastilla tono="cielo">Futuro</app-pastilla>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <h2 class="text-h2">Aviso de vacío</h2>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <app-aviso-vacio
+        titulo="Todavía no cargaste servicios"
+        detalle="Sin servicios tus clientes no pueden reservar."
+      >
+        <button appBoton type="button">Crear el primero</button>
+      </app-aviso-vacio>
+      <app-aviso-vacio titulo="No hay turnos para hoy" />
+    </div>
+  </section>
+</div>

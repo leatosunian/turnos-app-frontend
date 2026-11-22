@@ -1,0 +1,7 @@
+<label [class]="clases()">
+  {{ etiqueta() }}
+  <ng-content />
+</label>
+@if (error()) {
+  <p [id]="idError" class="text-small text-danger-fg">{{ error() }}</p>
+}

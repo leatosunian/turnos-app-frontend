@@ -1,0 +1,119 @@
+/* Fondo de ingresar y crear cuenta. Es una version mas tranquila del fondo de la portada:
+   una trama de puntos finos alrededor del formulario y luces calidas, desenfocadas, que se
+   mueven muy lento. Va en una capa absoluta detras de todo (z-index -1).
+
+   --x y --y son el centro de la trama de puntos: arriba al centro en el celular, que es donde
+   esta el formulario, y sobre el formulario (a la izquierda) en desktop. */
+.fondo-acceso {
+  --x: 50%;
+  --y: 0%;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* La trama de puntos. Cada punto es un degradado radial de 1 px que se repite cada 22 px, y
+   la mascara lo va borrando lejos del formulario, asi no llena toda la pantalla. */
+.fondo-acceso::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--color-line-strong) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 45% 55% at var(--x) var(--y), #000 10%, transparent 75%);
+}
+
+/* Las luces. En el celular son tres: ambar arriba a la izquierda, ambar claro arriba y coral
+   abajo a la derecha. Son mas grandes que la pagina (inset -15 %) para que al moverse no se
+   les vean los bordes, y el blur las deja como manchas de luz sin forma. */
+.fondo-acceso-luces {
+  position: absolute;
+  inset: -15%;
+  background:
+    radial-gradient(
+      circle at 15% 25%,
+      color-mix(in srgb, var(--color-accent) 7%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 85% 80%,
+      color-mix(in srgb, var(--color-danger) 6%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 60% 10%,
+      color-mix(in srgb, var(--color-accent-hover) 5%, transparent),
+      transparent 30%
+    );
+  filter: blur(60px);
+  animation: deriva-suave 24s ease-in-out infinite alternate;
+}
+
+/* La luz coral que asoma desde atras de la esquina de abajo a la derecha de la tarjeta. Solo
+   existe en desktop, porque en el celular la tarjeta no se muestra. Es un circulo de 440 px
+   centrado justo en la esquina (por eso right y bottom son menos la mitad, -220 px), y como
+   la tarjeta es opaca y esta adelante, tapa el centro y solo se ve el resplandor que sale por
+   los dos bordes. Respira despacio, como el haz de la portada. */
+.luz-tarjeta {
+  position: absolute;
+  right: -220px;
+  bottom: -220px;
+  z-index: -1;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-danger) 22%, transparent),
+    color-mix(in srgb, var(--color-accent) 9%, transparent) 45%,
+    transparent 70%
+  );
+  filter: blur(30px);
+  animation: respirar-suave 8s ease-in-out infinite alternate;
+}
+
+@media (width >= 64rem) {
+  .fondo-acceso {
+    --x: 25%;
+    --y: 20%;
+  }
+
+  /* En desktop la luz coral de abajo a la derecha ya la pone la tarjeta (luz-tarjeta), asi
+     que aca quedan solo las dos de arriba. */
+  .fondo-acceso-luces {
+    background:
+      radial-gradient(
+        circle at 15% 25%,
+        color-mix(in srgb, var(--color-accent) 7%, transparent),
+        transparent 30%
+      ),
+      radial-gradient(
+        circle at 60% 10%,
+        color-mix(in srgb, var(--color-accent-hover) 5%, transparent),
+        transparent 30%
+      );
+  }
+}
+
+/* las luces se corren un 3 % para cada lado, va y vuelve gracias al alternate */
+@keyframes deriva-suave {
+  from {
+    transform: translate(-3%, -2%);
+  }
+  to {
+    transform: translate(3%, 2%);
+  }
+}
+
+/* la luz de la tarjeta sube y baja de intensidad */
+@keyframes respirar-suave {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
