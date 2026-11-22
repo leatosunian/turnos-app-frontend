@@ -35,8 +35,17 @@ import { MenuMasEstado } from '../../../layouts/private-layout/menu-mas/menu-mas
 import { Boton } from '../../../shared/components/boton/boton';
 import { Campo } from '../../../shared/components/campo/campo';
 import { Pastilla } from '../../../shared/components/pastilla/pastilla';
+import { Segmentado } from '../../../shared/components/segmentado/segmentado';
 import { MontoPipe } from '../../../shared/pipes/monto-pipe';
 import { emailValido, obligatorio } from '../../../shared/validadores/validadores';
+import {
+  OPCIONES_ANTICIPACION,
+  OPCIONES_CANCELACION,
+  Politicas,
+  politicasDe,
+  textoAnticipacion,
+  textoCancelacion,
+} from './politicas';
 
 type Estado = 'cargando' | 'crear' | 'editar' | 'error';
 
@@ -52,6 +61,8 @@ const RUBROS_VISIBLES = 5;
 export const MAX_RUBROS = 3;
 // La vista previa muestra los primeros, como la página pública.
 const SERVICIOS_EN_VISTA_PREVIA = 2;
+// Cuanto queda a la vista el aviso de "Cambios guardados" antes de irse solo
+const AVISO_GUARDADO_MS = 3000;
 
 /** Se puede escribir "11 4555 0182": los espacios se sacan antes de mandarlo. */
 function sinEspacios(valor: string): string {
@@ -88,7 +99,16 @@ function iniciales(nombre: string): string {
 }
 
 @Component({
-  imports: [Boton, Campo, MontoPipe, NgTemplateOutlet, Pastilla, ReactiveFormsModule, RouterLink],
+  imports: [
+    Boton,
+    Campo,
+    MontoPipe,
+    NgTemplateOutlet,
+    Pastilla,
+    ReactiveFormsModule,
+    RouterLink,
+    Segmentado,
+  ],
   selector: 'app-mi-negocio-page',
   styleUrl: './mi-negocio-page.css',
   templateUrl: './mi-negocio-page.html',
@@ -119,6 +139,18 @@ export class MiNegocioPage implements OnInit {
   protected readonly guardando = signal(false);
   protected readonly errorGuardar = signal<string | null>(null);
   protected readonly copiado = signal(false);
+  // se prende un rato despues de guardar, para que el dueño vea que se guardo. Antes la unica
+  // señal era que desaparecia la barra de cambios, y no alcanzaba
+  protected readonly guardado = signal(false);
+  private esperaGuardado?: ReturnType<typeof setTimeout>;
+
+  protected readonly opcionesCancelacion = OPCIONES_CANCELACION;
+  protected readonly opcionesAnticipacion = OPCIONES_ANTICIPACION;
+  // Lo elegido en los selectores de Politica de cancelacion y Anticipacion minima. Van como
+  // string porque asi trabaja el selector segmentado ('48', no 48). Arrancan en los valores
+  // por defecto y aplicar() los pisa con lo guardado en el negocio
+  protected readonly cancelacion = signal(String(politicasDe(null).cancelacion));
+  protected readonly anticipacion = signal(String(politicasDe(null).anticipacion));
 
   protected readonly form = this.fb.group({
     nombre: ['', [obligatorio, Validators.maxLength(100)]],
@@ -184,9 +216,39 @@ export class MiNegocioPage implements OnInit {
     return originales.length !== elegidos.size || originales.some((id) => !elegidos.has(id));
   });
 
+  // Las politicas elegidas pasadas a numero, que es como las manda el PUT
+  private readonly politicasElegidas = computed<Politicas>(() => ({
+    cancelacion: Number(this.cancelacion()),
+    anticipacion: Number(this.anticipacion()),
+  }));
+
+  // Se compara contra politicasDe y no contra el negocio crudo porque un negocio sin politica
+  // cargada viene con null, y en la pantalla ya se ve como 24 h. Si no, elegir 24 h en un negocio
+  // viejo contaria como cambio cuando a la vista es lo mismo
+  private readonly politicasCambiaron = computed(() => {
+    const negocio = this.negocio();
+    if (!negocio) return false;
+    const guardadas = politicasDe(negocio);
+    const elegidas = this.politicasElegidas();
+    return (
+      elegidas.cancelacion !== guardadas.cancelacion ||
+      elegidas.anticipacion !== guardadas.anticipacion
+    );
+  });
+
   /** La barra de guardar sólo aparece cuando hay algo distinto de lo guardado. */
   protected readonly hayCambios = computed(
-    () => this.estado() === 'editar' && (this.camposCambiaron() || this.rubrosCambiaron()),
+    () =>
+      this.estado() === 'editar' &&
+      (this.camposCambiaron() || this.rubrosCambiaron() || this.politicasCambiaron()),
+  );
+
+  // Las lineas que explican cada politica abajo de su selector, con el valor que esta elegido
+  protected readonly explicacionCancelacion = computed(() =>
+    textoCancelacion(this.politicasElegidas().cancelacion),
+  );
+  protected readonly explicacionAnticipacion = computed(() =>
+    textoAnticipacion(this.politicasElegidas().anticipacion),
   );
 
   protected readonly largoDescripcion = computed(() => this.valores().descripcion.length);
@@ -248,6 +310,7 @@ export class MiNegocioPage implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
+    this.destroyRef.onDestroy(() => clearTimeout(this.esperaGuardado));
   }
 
   protected cargar(): void {
@@ -314,6 +377,7 @@ export class MiNegocioPage implements OnInit {
   protected guardar(): void {
     this.enviado.set(true);
     this.errorGuardar.set(null);
+    this.ocultarGuardado();
     if (this.form.invalid || this.guardando()) return;
     // Un negocio creado antes del tope puede tener más: tiene que sacar alguno para guardar.
     if (this.rubrosElegidos().size > MAX_RUBROS) {
@@ -327,6 +391,7 @@ export class MiNegocioPage implements OnInit {
       next: (negocio) => {
         this.guardando.set(false);
         this.aplicar(negocio);
+        this.mostrarGuardado();
       },
       error: (error: ApiError) => {
         this.guardando.set(false);
@@ -360,7 +425,11 @@ export class MiNegocioPage implements OnInit {
   }
 
   private crear(): Observable<BusinessResponse> {
-    const datos: BusinessRequest = { ...this.datosDelForm(), scheduleDaysToCreate: DIAS_A_GENERAR };
+    const datos: BusinessRequest = {
+      ...this.datosDelForm(),
+      ...this.datosDePoliticas(),
+      scheduleDaysToCreate: DIAS_A_GENERAR,
+    };
     return this.negocios.crear(datos).pipe(
       tap((negocio) => {
         this.registrar(negocio);
@@ -372,12 +441,13 @@ export class MiNegocioPage implements OnInit {
 
   private actualizar(): Observable<BusinessResponse> {
     const negocio = this.negocio()!;
-    if (!this.camposCambiaron()) {
+    if (!this.camposCambiaron() && !this.politicasCambiaron()) {
       return this.sincronizarRubros(negocio);
     }
     // El PUT reemplaza todo: se mandan igual los datos de la agenda que esta pantalla no edita.
     const datos: BusinessRequest = {
       ...this.datosDelForm(),
+      ...this.datosDePoliticas(),
       automaticSchedule: negocio.automaticSchedule,
       scheduleEnd: negocio.scheduleEnd,
       scheduleDaysToCreate: negocio.scheduleDaysToCreate,
@@ -422,7 +492,33 @@ export class MiNegocioPage implements OnInit {
     this.registrar(negocio);
     this.form.reset(valoresDe(negocio));
     this.rubrosElegidos.set(new Set(negocio.businessTypes.map((rubro) => rubro.id)));
+    const politicas = politicasDe(negocio);
+    this.cancelacion.set(String(politicas.cancelacion));
+    this.anticipacion.set(String(politicas.anticipacion));
     this.enviado.set(false);
+  }
+
+  // Los nombres de los campos del back para las dos politicas. Por ejemplo con 48 h y 2 h da
+  // cancellationNoticeHours 48 y minBookingNoticeHours 2
+  private datosDePoliticas(): Pick<
+    BusinessRequest,
+    'cancellationNoticeHours' | 'minBookingNoticeHours'
+  > {
+    const { cancelacion, anticipacion } = this.politicasElegidas();
+    return { cancellationNoticeHours: cancelacion, minBookingNoticeHours: anticipacion };
+  }
+
+  // Prende el aviso y lo apaga solo a los 3 segundos. Si se vuelve a guardar antes, se corta el
+  // timer anterior para que no apague el aviso nuevo antes de tiempo
+  private mostrarGuardado(): void {
+    clearTimeout(this.esperaGuardado);
+    this.guardado.set(true);
+    this.esperaGuardado = setTimeout(() => this.guardado.set(false), AVISO_GUARDADO_MS);
+  }
+
+  private ocultarGuardado(): void {
+    clearTimeout(this.esperaGuardado);
+    this.guardado.set(false);
   }
 
   private datosDelForm(): BusinessRequest {
