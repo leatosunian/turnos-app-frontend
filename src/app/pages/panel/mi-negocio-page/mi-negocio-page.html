@@ -97,6 +97,15 @@
             </p>
           }
 
+          @if (guardado()) {
+            <p
+              role="status"
+              class="rounded-control border border-success-line bg-success-soft px-3 py-2.5 text-small text-success"
+            >
+              Cambios guardados.
+            </p>
+          }
+
           <div class="grid grid-cols-2 gap-x-2 gap-y-3 lg:gap-3.5">
             <app-campo
               etiqueta="Nombre del negocio"
@@ -235,6 +244,38 @@
               <p class="text-small text-muted">Todavía no hay rubros para elegir.</p>
             }
           </fieldset>
+
+          <!-- en el celular los botones del selector se achican para que las 6 opciones de la
+               anticipacion entren en una sola fila -->
+          <section aria-labelledby="titulo-cancelacion" class="border-t border-line pt-4">
+            <h2 id="titulo-cancelacion" class="text-base font-semibold">Política de cancelación</h2>
+            <p class="mt-0.5 mb-3 text-[13px] text-muted">
+              ¿Hasta cuántas horas antes del turno le devolvés la seña al cliente que cancela?
+            </p>
+            <app-segmentado
+              etiqueta="Política de cancelación"
+              [opciones]="opcionesCancelacion"
+              [(valor)]="cancelacion"
+              class="max-sm:*:px-2 max-sm:*:text-[13px]"
+            />
+            <p class="mt-2 text-small text-fg-2">{{ explicacionCancelacion() }}</p>
+          </section>
+
+          <section aria-labelledby="titulo-anticipacion" class="border-t border-line pt-4">
+            <h2 id="titulo-anticipacion" class="text-base font-semibold">
+              Anticipación mínima para reservar
+            </h2>
+            <p class="mt-0.5 mb-3 text-[13px] text-muted">
+              ¿Con cuánto tiempo de anticipación tienen que reservar tus clientes?
+            </p>
+            <app-segmentado
+              etiqueta="Anticipación mínima para reservar"
+              [opciones]="opcionesAnticipacion"
+              [(valor)]="anticipacion"
+              class="max-sm:*:px-2 max-sm:*:text-[13px]"
+            />
+            <p class="mt-2 text-small text-fg-2">{{ explicacionAnticipacion() }}</p>
+          </section>
 
           @if (estado() === 'crear') {
             <button
