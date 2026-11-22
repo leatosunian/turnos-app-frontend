@@ -16,7 +16,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription, map, switchMap } from 'rxjs';
+import { Subscription, interval, map, switchMap } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error';
 import { HORAS_PARA_DEVOLVER_SENA } from '../../../core/models/turno-cliente';
 import { ReservaEnCurso } from '../../../core/models/reserva';
@@ -39,17 +39,28 @@ import { emailValido, obligatorio } from '../../../shared/validadores/validadore
 import {
   agruparPorDia,
   claveDeFecha,
+  horasEnTexto,
   iniciales,
   mesDeClave,
   montoSena,
   nombreRubro,
   porcentajeSena,
+  reservables,
   semanasDelMes,
   separarPorTurno,
 } from './reserva';
 
 type Estado = 'cargando' | 'listo' | 'no-encontrado' | 'error';
 type EstadoLibres = 'cargando' | 'listo' | 'error';
+
+/** Por qué se perdió el horario elegido al intentar reservarlo. */
+interface HorarioPerdido {
+  titulo: string;
+  detalle: string;
+}
+
+/** Cada cuánto se vuelve a mirar la hora para sacar los horarios que ya no se pueden reservar. */
+const CADA_CUANTO_MIRAR_LA_HORA = 30_000;
 
 // mismas reglas que BookAppointmentRequest del back
 const TELEFONO = /^[0-9+\-\s]{7,20}$/;
@@ -105,7 +116,8 @@ export class NegocioPage {
   protected readonly servicios = signal<ServResponse[]>([]);
 
   protected readonly servicioId = signal<string | null>(null);
-  protected readonly libres = signal<AppointmentResponse[]>([]);
+  /** Los libres tal cual los mandó el back. Lo que se muestra es `libres`, que los filtra. */
+  private readonly libresDelBack = signal<AppointmentResponse[]>([]);
   protected readonly estadoLibres = signal<EstadoLibres>('cargando');
   protected readonly mes = signal(primerDiaDelMes(new Date()));
   protected readonly dia = signal<string | null>(null);
@@ -114,8 +126,13 @@ export class NegocioPage {
   protected readonly enviado = signal(false);
   protected readonly reservando = signal(false);
   protected readonly errorReserva = signal<string | null>(null);
-  /** El horario elegido se ocupó mientras el cliente completaba los datos. */
-  protected readonly horarioOcupado = signal(false);
+  /**
+   * El back rechazó el horario elegido mientras el cliente completaba los datos: lo tomó otra
+   * persona o quedó dentro de la anticipación mínima del negocio.
+   */
+  protected readonly horarioPerdido = signal<HorarioPerdido | null>(null);
+  /** La hora contra la que se filtran los horarios. Avanza sola cada CADA_CUANTO_MIRAR_LA_HORA. */
+  private readonly ahora = signal(Date.now());
 
   protected readonly logueado = this.auth.logueado;
 
@@ -128,6 +145,16 @@ export class NegocioPage {
   protected readonly iniciales = computed(() => iniciales(this.negocio()?.name ?? ''));
   protected readonly rubros = computed(() =>
     (this.negocio()?.businessTypes ?? []).map(nombreRubro).join(' · '),
+  );
+  /** Horas de anticipación mínima para reservar. Sin valor (negocios de antes) es 0. */
+  protected readonly horasAnticipacion = computed(() => this.negocio()?.minBookingNoticeHours ?? 0);
+  protected readonly textoAnticipacion = computed(() => horasEnTexto(this.horasAnticipacion()));
+  /**
+   * Los libres que todavía se pueden reservar ahora. El back ya filtra al responder, pero mientras
+   * el cliente mira la página el tiempo pasa y algunos quedan dentro de la anticipación.
+   */
+  protected readonly libres = computed(() =>
+    reservables(this.libresDelBack(), this.ahora(), this.horasAnticipacion()),
   );
 
   protected readonly servicio = computed(
@@ -183,6 +210,14 @@ export class NegocioPage {
   protected readonly turno = computed(
     () => this.libres().find((t) => t.id === this.turnoId()) ?? null,
   );
+  /**
+   * El horario elegido sigue libre pero ya no se puede reservar: mientras el cliente miraba, quedó
+   * dentro de la anticipación mínima (o empezó, si el negocio no pide anticipación).
+   */
+  protected readonly turnoVencido = computed(() => {
+    const id = this.turnoId();
+    return !!id && !this.turno() && this.libresDelBack().some((t) => t.id === id);
+  });
   protected readonly sena = computed(() => {
     const turno = this.turno();
     const servicio = this.servicio();
@@ -196,6 +231,10 @@ export class NegocioPage {
         this.slug = params.get('slug') ?? '';
         this.cargar();
       });
+
+    interval(CADA_CUANTO_MIRAR_LA_HORA)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.actualizarHora());
 
     // con sesión, el back usa el nombre y el email de la cuenta
     const usuario = this.auth.usuario();
@@ -236,7 +275,7 @@ export class NegocioPage {
     if (id === this.servicioId() && this.estadoLibres() !== 'error') return;
     this.servicioId.set(id);
     this.turnoId.set(null);
-    this.horarioOcupado.set(false);
+    this.horarioPerdido.set(null);
     this.errorReserva.set(null);
     this.cargarLibres();
   }
@@ -253,7 +292,8 @@ export class NegocioPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (libres) => {
-          this.libres.set(libres);
+          this.ahora.set(Date.now());
+          this.libresDelBack.set(libres);
           this.estadoLibres.set('listo');
           this.ajustarDia();
           alTerminar?.();
@@ -274,8 +314,18 @@ export class NegocioPage {
 
   protected elegirTurno(id: string): void {
     this.turnoId.set(id);
-    this.horarioOcupado.set(false);
+    this.horarioPerdido.set(null);
     this.errorReserva.set(null);
+  }
+
+  /**
+   * Vuelve a mirar la hora: los horarios que quedaron dentro de la anticipación dejan de mostrarse.
+   * Si el día elegido se queda sin horarios, pasa al siguiente que tenga.
+   */
+  protected actualizarHora(): void {
+    this.ahora.set(Date.now());
+    const dia = this.dia();
+    if (dia && !this.libresPorDia().has(dia)) this.ajustarDia();
   }
 
   protected error(control: AbstractControl, mensajes: Record<string, string>): string | null {
@@ -320,14 +370,26 @@ export class NegocioPage {
         error: (error: ApiError) => {
           this.reservando.set(false);
           if (error.status === 409 || error.status === 404) {
-            // puede ser que lo tomó otro o que el cliente ya tiene uno pendiente de pago
+            // puede ser que lo tomó otro, que quedó dentro de la anticipación mínima del negocio o
+            // que el cliente ya tiene uno pendiente de pago
             this.cargarLibres(() => {
               if (this.turno()) {
                 this.errorReserva.set(error.message);
-              } else {
-                this.turnoId.set(null);
-                this.horarioOcupado.set(true);
+                return;
               }
+              this.turnoId.set(null);
+              // si con la hora de ahora ya no cumple la anticipación, no es que lo tomó otro: el
+              // mensaje del back dice cuántas horas pide el negocio
+              const porAnticipacion = !reservables([turno], Date.now(), this.horasAnticipacion())
+                .length;
+              this.horarioPerdido.set(
+                porAnticipacion
+                  ? { titulo: 'Ese horario ya no se puede reservar', detalle: error.message }
+                  : {
+                      titulo: 'Ese horario se acaba de ocupar',
+                      detalle: 'Elegí otro de los que siguen libres.',
+                    },
+              );
             });
             return;
           }
